@@ -101,6 +101,7 @@ import java.util.Locale
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import com.example.tripnila_admin.common.ChartDropDownFilter
 import com.patrykandpatrick.vico.core.axis.AxisItemPlacer
 import com.patrykandpatrick.vico.core.axis.AxisPosition
 import com.patrykandpatrick.vico.core.axis.formatter.AxisValueFormatter
@@ -231,7 +232,6 @@ fun AdminDashboardScreen(
 
                 item {
                     SalesChart(
-                        year = 2023,
                         modifier = Modifier.padding(horizontalPaddingValue,verticalPaddingValue),
                         viewModel = AdminDashboard()
                     )
@@ -256,11 +256,21 @@ fun AdminDashboardScreen(
                                 .align(Alignment.End)
                                 .padding(bottom = 3.dp)
                         )
+                        val totalProfitState = remember { mutableStateOf(0.0) }
+                        val itemCountState = remember { mutableStateOf(0) }
+                        val profitPercentageState = remember { mutableStateOf(0.0) }
+                        LaunchedEffect(Unit) {
+                            val (totalProfit, itemCount) = dashboardViewModel.getTodayProfitAndItemCount()
+                            val profitPercentage = dashboardViewModel.getPercentageDifference()
+                            totalProfitState.value = totalProfit
+                            itemCountState.value = itemCount
+                            profitPercentageState.value = profitPercentage
+                        }
                         ProfitCard(
                             lastUpdateTime = "12:23 PM",
-                            percentage = -5.4,
-                            profitAmount = 4250,
-                            bookingCount = 23,
+                            percentage = profitPercentageState.value,
+                            profitAmount = totalProfitState.value.toInt(),
+                            bookingCount = itemCountState.value,
                             modifier = Modifier.padding(bottom = verticalPaddingValue)
                         )
                         RevenueCard(
@@ -325,7 +335,7 @@ fun AdminDashboardScreen(
                             )
                             Spacer(modifier = Modifier.width(10.dp))
                             AppDropDownFilter(
-                                options = listOf("Relevance", "...", "...", "..."), // Replace with actual filter
+                                options = listOf("Relevance", "...", "...", "..."),
                                 modifier = Modifier.offset(y = 3.dp)
                             )
                         }
@@ -386,32 +396,40 @@ fun DashboardInfoCard(modifier: Modifier = Modifier, cardText: String, count: In
 @Composable
 fun SalesChart(
     modifier: Modifier = Modifier,
-    year: Int,
     viewModel : AdminDashboard
 ) {
+    var year by remember { mutableStateOf(viewModel.selectedYear.value) }
+
+    // Observe changes in aggregated sales data based on the selected year
     val aggregatedData by viewModel.aggregatedSalesData.observeAsState(initial = emptyList())
-    viewModel.getSales()
+
+    // Fetch sales data whenever the year changes
+    LaunchedEffect(key1 = year) {
+        viewModel.getSales(year)
+    }
     val monthNames = mapOf(
-        1 to "January",
-        2 to "February",
-        3 to "March",
-        4 to "April",
-        5 to "May",
-        6 to "June",
-        7 to "July",
-        8 to "August",
-        9 to "September",
-        10 to "October",
-        11 to "November",
-        12 to "December"
+        2 to "January",
+        3 to "February",
+        4 to "March",
+        5 to "April",
+        6 to "May",
+        7 to "June",
+        8 to "July",
+        9 to "August",
+        10 to "September",
+        11 to "October",
+        12 to "November",
+        13 to "December"
     )
 
-// Prepare chart data
-    val chartEntries = aggregatedData.map { entry ->
-        Pair(entry.month.toFloat(), entry.totalAmount.toFloat())
+    // Prepare chart data
+    val chartEntries = remember(aggregatedData) {
+        aggregatedData.map { entry ->
+            Pair(entry.month.toFloat(), entry.totalAmount.toFloat())
+        }
     }
 
-// Pass the pairs to entryModelOf
+    // Pass the entries to the chart model
     val chartEntryModel = entryModelOf(*chartEntries.toTypedArray())
     val horizontalAxisValueFormatter = AxisValueFormatter<AxisPosition.Horizontal.Bottom> { value, _ ->
         val monthNumber = value.toInt()+1 // Assuming month numbers start from 1
@@ -436,7 +454,7 @@ fun SalesChart(
                 .padding(5.dp, 5.dp)
         ) {
             Text(
-                text = "Sales for Year $year",
+                text = "Sales for Year ${viewModel.selectedYear.value}",
                 color = Color(0xfff9a664),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
@@ -444,8 +462,11 @@ fun SalesChart(
                     .wrapContentWidth(Alignment.CenterHorizontally)
             )
 
-            AppDropDownFilter(
-                options = listOf("Sales", "...", "..."),
+            ChartDropDownFilter(
+                options = listOf("2024", "2023"),
+                onItemSelected = { year ->
+                    viewModel.setSelectedYear(year.toInt()) // Update the selected year in ViewModel
+                },
                 modifier = Modifier.align(Alignment.CenterEnd)
             )
 

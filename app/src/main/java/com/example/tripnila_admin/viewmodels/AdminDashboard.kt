@@ -1,28 +1,33 @@
 package com.example.tripnila_admin.viewmodels
-import android.util.Log
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.QuerySnapshot
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
+import java.util.Locale
 
 class AdminDashboard : ViewModel() {
     private val db = FirebaseFirestore.getInstance()
+    private val _selectedYear = mutableStateOf(2024)
+    val selectedYear: State<Int> = _selectedYear
 
-    // LiveData to hold the count
-    private val _totalCount = MutableLiveData<Int>()
-    val totalCount: LiveData<Int>
-        get() = _totalCount
-    //val collectionRef = db.collection("tourist")
+    private val _aggregatedSalesData = MutableLiveData<List<MonthTotal>>()
+    val aggregatedSalesData: LiveData<List<MonthTotal>> = _aggregatedSalesData
 
-    // Function to fetch the total count
+    fun setSelectedYear(year: Int) {
+        _selectedYear.value = year
+        getSales(year)
+    }
+
 
     suspend fun getTotalCount(collectionPath: String): Int {
         return withContext(Dispatchers.IO) {
@@ -41,25 +46,99 @@ class AdminDashboard : ViewModel() {
         }
     }
 
+    data class TodayProfitAndItemCount(val totalProfit: Double, val itemCount: Int)
+
+    suspend fun getTodayProfitAndItemCount(): TodayProfitAndItemCount {
+        val todayCalendar = Calendar.getInstance().apply {
+            timeInMillis = System.currentTimeMillis()
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val startOfDayTimestamp = Timestamp(todayCalendar.time)
+
+        return try {
+            val querySnapshot = db.collection("staycation_booking")
+                .whereGreaterThanOrEqualTo("bookingDate", startOfDayTimestamp)
+                .get()
+                .await()
+
+            val totalProfit = querySnapshot.documents.sumByDouble { document ->
+                document.getDouble("totalAmount") ?: 0.0
+            }
+
+            TodayProfitAndItemCount(totalProfit, querySnapshot.size())
+        } catch (e: Exception) {
+            // Handle errors here
+            TodayProfitAndItemCount(0.0, 0)
+        }
+    }
+
+    suspend fun getProfitForDate(date: Calendar): Double {
+        val timestamp = Timestamp(date.time)
+        return try {
+            val querySnapshot = db.collection("staycation_booking")
+                .whereEqualTo("bookingDate", timestamp)
+                .get()
+                .await()
+
+            querySnapshot.documents.sumByDouble { document ->
+                document.getDouble("totalAmount") ?: 0.0
+            }
+        } catch (e: Exception) {
+            // Handle errors here
+            0.0
+        }
+    }
+
+    suspend fun getPercentageDifference(): Double {
+        val todayCalendar = Calendar.getInstance()
+        val yesterdayCalendar = Calendar.getInstance().apply {
+            add(Calendar.DATE, -1) // Set to yesterday
+        }
+
+        val todayProfit = getProfitForDate(todayCalendar)
+        val yesterdayProfit = getProfitForDate(yesterdayCalendar)
+
+        val difference = todayProfit - yesterdayProfit
+
+        // Avoid division by zero
+        return if (yesterdayProfit != 0.0) {
+            (difference / yesterdayProfit) * 100
+        } else {
+            // Handle case when yesterday's profit is zero
+            100.0
+        }
+    }
+
     data class MonthTotal(val month: Int, val totalAmount: Double)
 
-    fun aggregateSalesByMonth(salesData: List<DocumentSnapshot>): List<MonthTotal> {
+    fun aggregateSalesByMonth(salesData: List<DocumentSnapshot>, year: Int): List<MonthTotal> {
         val salesByMonth = mutableMapOf<Int, Double>()
+
+        // Initialize salesByMonth with zero values for all months of the year
+        for (month in 1..12) {
+            salesByMonth[month] = 0.0
+        }
 
         // Iterate through the sales data to aggregate by month
         for (document in salesData) {
             val date = document.getDate("bookingDate")
             val amount = document.getDouble("totalAmount")
 
-            // Extract the month from the date
+            // Extract the month and year from the date
             val calendar = Calendar.getInstance()
             calendar.time = date
 
-            val month = calendar.get(Calendar.MONTH)
+            val month = calendar.get(Calendar.MONTH) + 1 // Adjust for 0-based index
+            val docYear = calendar.get(Calendar.YEAR)
 
-            // Aggregate the amount for the corresponding month
-            val currentTotal = salesByMonth.getOrDefault(month, 0.0)
-            salesByMonth[month] = currentTotal + (amount ?: 0.0)
+            if (docYear == year) {
+                // Aggregate the amount for the corresponding month
+                val currentTotal = salesByMonth[month] ?: 0.0
+                salesByMonth[month] = currentTotal + (amount ?: 0.0)
+            }
         }
 
         // Convert the map to a list of MonthTotal objects
@@ -70,20 +149,21 @@ class AdminDashboard : ViewModel() {
 
         return monthTotalList
     }
-    private val _aggregatedSalesData = MutableLiveData<List<MonthTotal>>()
-    val aggregatedSalesData: LiveData<List<MonthTotal>> = _aggregatedSalesData
-    fun getSales(){
+
+    fun getSales(year : Int) {
         val salesCollection = db.collection("staycation_booking")
 
         salesCollection.get().addOnSuccessListener { documents ->
             val salesData = documents.filter { document ->
                 document.contains("bookingDate") &&
-                document.contains("totalAmount") &&
-                document.getString("bookingStatus") == "Completed"
+                        document.contains("totalAmount") &&
+                        document.getString("bookingStatus") == "Completed"
             }
-            val aggregatedData = aggregateSalesByMonth(salesData)
+            val aggregatedData = aggregateSalesByMonth(salesData, year)
             _aggregatedSalesData.value = aggregatedData
             // Now aggregatedData contains a list of MonthTotal objects with the month and total amount
         }
     }
+
+
 }

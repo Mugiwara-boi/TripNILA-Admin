@@ -152,6 +152,59 @@ fun AppDropDownFilter(options: List<String>, modifier: Modifier = Modifier) {
     }
 
 }
+@Composable
+fun ChartDropDownFilter(
+    options: List<String>,
+    onItemSelected: (String) -> Unit, // Callback function to handle selection changes
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var selectedYear by remember { mutableStateOf(options.firstOrNull() ?: "") }
+    val icon = if (expanded)
+        Icons.Filled.KeyboardArrowUp
+    else
+        Icons.Filled.KeyboardArrowDown
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier,
+    ) {
+        Text(
+            text = selectedYear,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Medium,
+        )
+        IconButton(
+            modifier = Modifier.size(20.dp),
+            onClick = { expanded = true }
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = "",
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier
+                .background(Color.White)
+        ) {
+            options.forEach { label ->
+                DropdownMenuItem(
+                    text = { Text(text = label) },
+                    colors = MenuDefaults.itemColors(
+                        textColor = Color(0xFF6B6B6B)
+                    ),
+                    onClick = {
+                        selectedYear = label
+                        expanded = false
+                        onItemSelected(label) // Call the callback function
+                    }
+                )
+            }
+        }
+    }
+}
 
 @Composable
 fun AppOutlinedButton(
