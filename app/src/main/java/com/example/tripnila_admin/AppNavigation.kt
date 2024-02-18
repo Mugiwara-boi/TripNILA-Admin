@@ -12,6 +12,7 @@ import androidx.navigation.navigation
 import com.example.tripnila_admin.screens.AdminDashboardScreen
 import com.example.tripnila_admin.screens.AdminProfileScreen
 import com.example.tripnila_admin.screens.AdminReportsScreen
+import com.example.tripnila_admin.viewmodels.AdminDashboard
 
 enum class LoginRoutes {
 
@@ -55,7 +56,8 @@ fun NavGraphBuilder.adminGraph(
         ) {
             AdminDashboardScreen(
                 adminId = it.arguments?.getString("adminId") ?: "",
-                navController = navController
+                navController = navController,
+                dashboardViewModel = AdminDashboard()
             )
         }
         composable(

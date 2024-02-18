@@ -45,6 +45,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -73,6 +75,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import co.yml.charts.common.model.PlotType
 import co.yml.charts.ui.piechart.charts.PieChart
@@ -84,6 +87,7 @@ import com.example.tripnila_admin.R
 import com.example.tripnila_admin.common.AdminBottomNavigationBar
 import com.example.tripnila_admin.common.SeeAllButton
 import com.example.tripnila_admin.data.TableRow
+import com.example.tripnila_admin.viewmodels.AdminDashboard
 import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
 import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
 import com.patrykandpatrick.vico.compose.chart.Chart
@@ -95,11 +99,19 @@ import com.patrykandpatrick.vico.core.entry.entryModelOf
 import java.text.NumberFormat
 import java.util.Locale
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
+import com.patrykandpatrick.vico.core.axis.AxisItemPlacer
+import com.patrykandpatrick.vico.core.axis.AxisPosition
+import com.patrykandpatrick.vico.core.axis.formatter.AxisValueFormatter
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminDashboardScreen(
     adminId: String = "",
-    navController: NavHostController? = null
+    navController: NavHostController? = null,
+    dashboardViewModel : AdminDashboard
 ) {
 
     val horizontalPaddingValue = 16.dp
@@ -168,8 +180,33 @@ fun AdminDashboardScreen(
                             .height(120.dp)
                     ) {
                         items(6) { index ->
-                            val cardText = "Card $index"
-                            val count = index * 100
+                            val cardText = when (index) {
+                                0 -> "Users"
+                                1 -> "Staycation Listings"
+                                2 -> "Bookings"
+                                3 -> "Hosts"
+                                4 -> "Tours"
+                                5 -> "Businesses"
+                                else -> "Default Card Text"
+                            }
+
+
+                            val countLabel = when (index) {
+                                0 -> "tourist"
+                                1 -> "staycation"
+                                2 -> "staycation_booking"
+                                3 -> "host"
+                                4 -> "tour"
+                                5 -> "business"
+                                else -> ""
+                            }
+                            val totalCount = remember { mutableStateOf(0) }
+
+                            LaunchedEffect(key1 = countLabel) {
+                                val count = dashboardViewModel.getTotalCount(countLabel)
+                                totalCount.value = count
+                            }
+
                             val color = when (index) {
                                 0 -> Color(0xffF9A664)
                                 1 -> Color(0xff9ED93D)
@@ -179,13 +216,13 @@ fun AdminDashboardScreen(
                                 5 -> Color(0xffE177E3)
                                 else -> Color.Gray
                             }
-                            
+
                             DashboardInfoCard(
                                 modifier = Modifier
                                     .padding(8.dp)
                                     .fillMaxWidth(),
                                 cardText = cardText,
-                                count = count,
+                                count = totalCount.value,
                                 color = color
                             )
                         }
@@ -195,7 +232,8 @@ fun AdminDashboardScreen(
                 item {
                     SalesChart(
                         year = 2023,
-                        modifier = Modifier.padding(horizontalPaddingValue,verticalPaddingValue)
+                        modifier = Modifier.padding(horizontalPaddingValue,verticalPaddingValue),
+                        viewModel = AdminDashboard()
                     )
                 }
 
@@ -345,13 +383,42 @@ fun DashboardInfoCard(modifier: Modifier = Modifier, cardText: String, count: In
 
     }
 }
-
 @Composable
-fun SalesChart(modifier: Modifier = Modifier, year: Int) {
+fun SalesChart(
+    modifier: Modifier = Modifier,
+    year: Int,
+    viewModel : AdminDashboard
+) {
+    val aggregatedData by viewModel.aggregatedSalesData.observeAsState(initial = emptyList())
+    viewModel.getSales()
+    val monthNames = mapOf(
+        1 to "January",
+        2 to "February",
+        3 to "March",
+        4 to "April",
+        5 to "May",
+        6 to "June",
+        7 to "July",
+        8 to "August",
+        9 to "September",
+        10 to "October",
+        11 to "November",
+        12 to "December"
+    )
 
-    val chartEntryModel = entryModelOf(entriesOf(4f, 12f, 8f, 16f), entriesOf(12f, 16f, 4f, 12f))
+// Prepare chart data
+    val chartEntries = aggregatedData.map { entry ->
+        Pair(entry.month.toFloat(), entry.totalAmount.toFloat())
+    }
 
+// Pass the pairs to entryModelOf
+    val chartEntryModel = entryModelOf(*chartEntries.toTypedArray())
+    val horizontalAxisValueFormatter = AxisValueFormatter<AxisPosition.Horizontal.Bottom> { value, _ ->
+        val monthNumber = value.toInt()+1 // Assuming month numbers start from 1
+        monthNames[monthNumber] ?: ""
+    }
 
+    //val chartEntries = aggregatedData.map { entry -> Entry(entry.month.toFloat(), entry.totalAmount.toFloat()) }
     Card(
         shape = RoundedCornerShape(10.dp),
         elevation = CardDefaults.elevatedCardElevation(
@@ -392,14 +459,26 @@ fun SalesChart(modifier: Modifier = Modifier, year: Int) {
                     Color(0xfff9a664),
                     Color(0xff9FFFB4)
                 ),
-               // elevationOverlayColor = Color.Transparent
+                // elevationOverlayColor = Color.Transparent
             )
         ) {
             Chart(
                 chart = lineChart(),
                 model = chartEntryModel,
-                startAxis = rememberStartAxis(),
-                bottomAxis = rememberBottomAxis(),
+                startAxis = rememberStartAxis(
+                    title = "Top Values",
+                    tickLength = 0.dp,
+                    valueFormatter = { value, _ -> value.toInt().toString()
+
+                    }, itemPlacer = AxisItemPlacer.Vertical.default(
+                        maxItemCount = 6
+                    )
+                ),
+                bottomAxis = rememberBottomAxis(
+                    title = "Count of Values",
+                    tickLength = 0.dp,
+                    valueFormatter = horizontalAxisValueFormatter
+                ),
                 // legend = horizontalLegend(items = , iconSize = , iconPadding = ),
                 modifier = Modifier.padding(start = 5.dp, end = 20.dp, bottom = 5.dp),
             )
@@ -966,7 +1045,7 @@ private fun SearchbarPreview() {
 @Composable
 private fun AdminDashboardPreview() {
 
-    AdminDashboardScreen()
+    AdminDashboardScreen(dashboardViewModel = AdminDashboard())
 
 //    val sampleTableData = listOf(
 //        Triple("Withdrawal", "@jdelacruz", "2024-02-10 09:30 AM"),
