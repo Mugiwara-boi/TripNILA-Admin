@@ -9,6 +9,8 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.QuerySnapshot
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.time.format.DateTimeFormatter
@@ -23,6 +25,20 @@ class AdminDashboard : ViewModel() {
     private val _aggregatedSalesData = MutableLiveData<List<MonthTotal>>()
     val aggregatedSalesData: LiveData<List<MonthTotal>> = _aggregatedSalesData
     val totalProfitForYearLiveData = MutableLiveData<Double>()
+
+    private val _verifiedUser = MutableStateFlow(0)
+    val verifiedUser = _verifiedUser.asStateFlow()
+
+    private val _allUser = MutableStateFlow(0)
+    val allUser = _allUser.asStateFlow()
+
+    fun setVerifieduser(count: Int){
+        _verifiedUser.value = count
+    }
+
+    fun setAlluser(count: Int){
+        _allUser.value = count
+    }
 
     fun setSelectedYear(year: Int) {
         _selectedYear.value = year
@@ -66,7 +82,7 @@ class AdminDashboard : ViewModel() {
                 .await()
 
             val totalProfit = querySnapshot.documents.sumOf { document ->
-                document.getDouble("totalAmount") ?: 0.0
+                document.getDouble("commission") ?: 0.0
             }
 
             TodayProfitAndItemCount(totalProfit, querySnapshot.size())
@@ -85,7 +101,7 @@ class AdminDashboard : ViewModel() {
                 .await()
 
             querySnapshot.documents.sumOf { document ->
-                document.getDouble("totalAmount") ?: 0.0
+                document.getDouble("commission") ?: 0.0
             }
         } catch (e: Exception) {
             // Handle errors here
@@ -126,7 +142,7 @@ class AdminDashboard : ViewModel() {
         // Iterate through the sales data to aggregate by month
         for (document in salesData) {
             val date = document.getDate("bookingDate")
-            val amount = document.getDouble("totalAmount")
+            val amount = document.getDouble("commission")
 
             // Extract the month and year from the date
             val calendar = Calendar.getInstance()
@@ -157,7 +173,7 @@ class AdminDashboard : ViewModel() {
         salesCollection.get().addOnSuccessListener { documents ->
             val salesData = documents.filter { document ->
                 document.contains("bookingDate") &&
-                        document.contains("totalAmount") &&
+                        document.contains("commission") &&
                         document.getString("bookingStatus") == "Completed"
             }
             val aggregatedData = aggregateSalesByMonth(salesData, year)
@@ -171,7 +187,7 @@ class AdminDashboard : ViewModel() {
         salesCollection.get().addOnSuccessListener { documents ->
             val salesData = documents.filter { document ->
                 document.contains("bookingDate") &&
-                        document.contains("totalAmount") &&
+                        document.contains("commission") &&
                         document.getString("bookingStatus") == "Completed"
             }
             val totalProfitForYear = calculateProfitForYear(salesData, year)
@@ -193,7 +209,7 @@ class AdminDashboard : ViewModel() {
         // Iterate through the sales data to aggregate by month
         for (document in salesData) {
             val date = document.getDate("bookingDate")
-            val amount = document.getDouble("totalAmount")
+            val amount = document.getDouble("commission")
 
             // Extract the month and year from the date
             val calendar = Calendar.getInstance()
@@ -213,6 +229,21 @@ class AdminDashboard : ViewModel() {
         val totalProfit = totalProfitForYear.values.sum()
 
         return totalProfit
+    }
+
+    suspend fun getVerifiedTouristCount(): Int {
+        try {
+            val querySnapshot = db.collection("tourist_verification")
+                .whereEqualTo("verificationStatus", "Verified")
+                .get()
+                .await()
+
+            return querySnapshot.size()
+        } catch (e: Exception) {
+            // Handle any errors
+            e.printStackTrace()
+        }
+        return 0 // Return 0 if an error occurs
     }
 
 }
