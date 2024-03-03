@@ -234,7 +234,7 @@ class AdminDashboard : ViewModel() {
     suspend fun getVerifiedTouristCount(): Int {
         try {
             val querySnapshot = db.collection("tourist_verification")
-                .whereEqualTo("verificationStatus", "Verified")
+                .whereEqualTo("verificationStatus", "Approved")
                 .get()
                 .await()
 
