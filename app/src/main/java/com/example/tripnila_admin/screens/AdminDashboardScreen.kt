@@ -259,9 +259,11 @@ fun AdminDashboardScreen(
                         val totalProfitState = remember { mutableStateOf(0.0) }
                         val itemCountState = remember { mutableStateOf(0) }
                         val profitPercentageState = remember { mutableStateOf(0.0) }
+                        val totalProfitForYear by dashboardViewModel.totalProfitForYearLiveData.observeAsState(initial = 0.0)
                         LaunchedEffect(Unit) {
                             val (totalProfit, itemCount) = dashboardViewModel.getTodayProfitAndItemCount()
                             val profitPercentage = dashboardViewModel.getPercentageDifference()
+                            dashboardViewModel.getProfitForYear(2024)
                             totalProfitState.value = totalProfit
                             itemCountState.value = itemCount
                             profitPercentageState.value = profitPercentage
@@ -274,7 +276,7 @@ fun AdminDashboardScreen(
                             modifier = Modifier.padding(bottom = verticalPaddingValue)
                         )
                         RevenueCard(
-                            revenueAmount = 84370,
+                            revenueAmount = totalProfitForYear.toInt(),
                             lastUpdateTime = "12:23 PM",
                             percentage = 7.3,
                             modifier = Modifier.padding(bottom = verticalPaddingValue)

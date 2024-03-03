@@ -22,6 +22,7 @@ class AdminDashboard : ViewModel() {
 
     private val _aggregatedSalesData = MutableLiveData<List<MonthTotal>>()
     val aggregatedSalesData: LiveData<List<MonthTotal>> = _aggregatedSalesData
+    val totalProfitForYearLiveData = MutableLiveData<Double>()
 
     fun setSelectedYear(year: Int) {
         _selectedYear.value = year
@@ -64,7 +65,7 @@ class AdminDashboard : ViewModel() {
                 .get()
                 .await()
 
-            val totalProfit = querySnapshot.documents.sumByDouble { document ->
+            val totalProfit = querySnapshot.documents.sumOf { document ->
                 document.getDouble("totalAmount") ?: 0.0
             }
 
@@ -83,7 +84,7 @@ class AdminDashboard : ViewModel() {
                 .get()
                 .await()
 
-            querySnapshot.documents.sumByDouble { document ->
+            querySnapshot.documents.sumOf { document ->
                 document.getDouble("totalAmount") ?: 0.0
             }
         } catch (e: Exception) {
@@ -108,7 +109,7 @@ class AdminDashboard : ViewModel() {
             (difference / yesterdayProfit) * 100
         } else {
             // Handle case when yesterday's profit is zero
-            100.0
+            difference
         }
     }
 
@@ -164,6 +165,54 @@ class AdminDashboard : ViewModel() {
             // Now aggregatedData contains a list of MonthTotal objects with the month and total amount
         }
     }
+    fun getProfitForYear(year: Int) {
+        val salesCollection = db.collection("staycation_booking")
 
+        salesCollection.get().addOnSuccessListener { documents ->
+            val salesData = documents.filter { document ->
+                document.contains("bookingDate") &&
+                        document.contains("totalAmount") &&
+                        document.getString("bookingStatus") == "Completed"
+            }
+            val totalProfitForYear = calculateProfitForYear(salesData, year)
+            totalProfitForYearLiveData.postValue(totalProfitForYear) // Assuming totalProfitForYearLiveData is a MutableLiveData<Double>
+        }.addOnFailureListener { exception ->
+            // Handle failure
+            exception.printStackTrace()
+        }
+    }
+
+    private fun calculateProfitForYear(salesData: List<DocumentSnapshot>, year: Int): Double {
+        val totalProfitForYear = mutableMapOf<Int, Double>()
+
+        // Initialize total profit for each month of the year
+        for (month in 1..12) {
+            totalProfitForYear[month] = 0.0
+        }
+
+        // Iterate through the sales data to aggregate by month
+        for (document in salesData) {
+            val date = document.getDate("bookingDate")
+            val amount = document.getDouble("totalAmount")
+
+            // Extract the month and year from the date
+            val calendar = Calendar.getInstance()
+            calendar.time = date
+
+            val month = calendar.get(Calendar.MONTH) + 1 // Adjust for 0-based index
+            val docYear = calendar.get(Calendar.YEAR)
+
+            if (docYear == year) {
+                // Aggregate the amount for the corresponding month
+                val currentTotal = totalProfitForYear[month] ?: 0.0
+                totalProfitForYear[month] = currentTotal + (amount ?: 0.0)
+            }
+        }
+
+        // Calculate the total profit for the year
+        val totalProfit = totalProfitForYear.values.sum()
+
+        return totalProfit
+    }
 
 }
