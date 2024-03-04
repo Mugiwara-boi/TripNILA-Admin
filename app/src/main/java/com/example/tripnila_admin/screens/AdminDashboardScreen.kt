@@ -46,6 +46,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -117,7 +118,8 @@ fun AdminDashboardScreen(
 
     val horizontalPaddingValue = 16.dp
     val verticalPaddingValue = 10.dp
-
+    val verifiedUserCount = dashboardViewModel.verifiedUser.collectAsState().value
+    val allUserCount = dashboardViewModel.allUser.collectAsState().value
     // FOR BOTTOM NAVIGATION BAR
     val selectedItemIndex by rememberSaveable { mutableIntStateOf(0) }
 
@@ -205,6 +207,7 @@ fun AdminDashboardScreen(
 
                             LaunchedEffect(key1 = countLabel) {
                                 val count = dashboardViewModel.getTotalCount(countLabel)
+
                                 totalCount.value = count
                             }
 
@@ -250,19 +253,19 @@ fun AdminDashboardScreen(
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier
                         )
-                        AppDropDownFilter(
-                            options = listOf("Daily", "Weekly", "Monthly", "Yearly"),
-                            modifier = Modifier
-                                .align(Alignment.End)
-                                .padding(bottom = 3.dp)
-                        )
+
                         val totalProfitState = remember { mutableStateOf(0.0) }
                         val itemCountState = remember { mutableStateOf(0) }
                         val profitPercentageState = remember { mutableStateOf(0.0) }
+
                         val totalProfitForYear by dashboardViewModel.totalProfitForYearLiveData.observeAsState(initial = 0.0)
                         LaunchedEffect(Unit) {
                             val (totalProfit, itemCount) = dashboardViewModel.getTodayProfitAndItemCount()
                             val profitPercentage = dashboardViewModel.getPercentageDifference()
+                            val verifiedUser = dashboardViewModel.getVerifiedTouristCount()
+                            val count = dashboardViewModel.getTotalCount("tourist")
+                            dashboardViewModel.setVerifieduser(verifiedUser)
+                            dashboardViewModel.setAlluser(count)
                             dashboardViewModel.getProfitForYear(2024)
                             totalProfitState.value = totalProfit
                             itemCountState.value = itemCount
@@ -282,8 +285,8 @@ fun AdminDashboardScreen(
                             modifier = Modifier.padding(bottom = verticalPaddingValue)
                         )
                         VerifiedUsersCard(
-                            verifiedUsersCount = 1821,
-                            totalUsersCount = 2123,
+                            verifiedUsersCount = verifiedUserCount,
+                            totalUsersCount = allUserCount,
                             lastUpdateTime = "12:23 PM",
 
                         )
@@ -291,59 +294,7 @@ fun AdminDashboardScreen(
                 }
 
                 item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontalPaddingValue, verticalPaddingValue)
-                    ) {
-                        Text(
-                            text = "Recent",
-                            color = Color(0xff333333),
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier
-                        )
-                        Row(
-                            horizontalArrangement = Arrangement.End,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 5.dp)
-                        ) {
 
-                            CustomSearchView(
-                                search = search,
-                                onValueChange = { inputText ->
-                                    search = inputText
-                                },
-                                onSearch = {
-                                    /*TODO*/
-                                },
-                                focusManager = focusManager,
-                                trailingIcon = {
-                                    if (search.isNotEmpty()) {
-                                        Icon(
-                                            modifier = Modifier
-                                                .size(12.dp)
-                                                .clickable {
-                                                    search = ""
-
-                                                },
-                                            imageVector = Icons.Default.Close,
-                                            contentDescription = "Close icon",
-                                        )
-                                    }
-                                },
-                                searchFieldWidth = 120.dp
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            AppDropDownFilter(
-                                options = listOf("Relevance", "...", "...", "..."),
-                                modifier = Modifier.offset(y = 3.dp)
-                            )
-                        }
-
-                        TableCard(modifier = Modifier, tableData =  sampleTableData)
-                    }
 
                 }
 
@@ -846,9 +797,9 @@ fun VerifiedUsersCard(
                         fontSize = 8.sp
                     )
                 }
-
+                val formattedPercentage = String.format("%.1f", verifiedPercentage)
                 Text(
-                    text = "Verified users: ${String.format("%.1f", selectedSliceValue)}%",
+                    text = "Verified users: $formattedPercentage%",
                     color = Color(0xfff9a664),
                     textAlign = TextAlign.Center,
                     fontSize = 8.sp,
