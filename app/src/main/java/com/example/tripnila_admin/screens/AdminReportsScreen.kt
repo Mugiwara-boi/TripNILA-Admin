@@ -1,5 +1,6 @@
 package com.example.tripnila_admin.screens
 
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,7 +14,11 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -26,8 +31,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -37,6 +45,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -54,20 +63,37 @@ import com.example.tripnila_admin.common.AppFilledButton
 import com.example.tripnila_admin.common.AppOutlinedButton
 import com.example.tripnila_admin.common.AppRatingBar
 import com.example.tripnila_admin.common.AppTopBar
+import com.example.tripnila_admin.viewmodels.AdminReports
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminReportsScreen(
     adminId: String = "",
+    adminReports: AdminReports,
     navController: NavHostController? = null
 ) {
+
+    LaunchedEffect(adminId){
+        adminReports.fetchPendingVerifications()
+    }
 
     val horizontalPaddingValue = 16.dp
     val verticalPaddingValue = 10.dp
 
+
+    val pendingVerifications by adminReports.pendingVerifications.collectAsState()
+    val scope = rememberCoroutineScope()
+
     val selectedItemIndex by rememberSaveable { mutableIntStateOf(1) }
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(state = rememberTopAppBarState())
+
+    Log.d("AdminReportsScreen", "Pending verifications size: ${pendingVerifications.size}")
+
 
     Surface(
         modifier = Modifier
@@ -97,40 +123,6 @@ fun AdminReportsScreen(
                     .fillMaxSize()
                     .padding(it)
             ) {
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontalPaddingValue, verticalPaddingValue)
-                    ) {
-                        Text(
-                            text = "Staycation",
-                            color = Color(0xff333333),
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier
-                        )
-                        AppDropDownFilter(
-                            options = listOf("Recent", "...", "...", "..."),
-                            modifier = Modifier
-                                .align(Alignment.End)
-                                .padding(bottom = 3.dp)
-                        )
-                        ServiceReportCard(
-                            serviceImage = "",
-                            reporterImage = "",
-                            serviceName = "Quiapo Staycation with pool by Jun",
-                            serviceLocation = "Quiapo, Manila",
-                            reportDateTime = "2022-09-27 18:00:00",
-                            reporterFullName = "Maya Cruz",
-                            reporterUsername = "mcruz",
-                            reportType = "Scamming",
-                            report = "This is a scam. we checked the location and there’s no building on it.",
-                           // modifier = Modifier.padding(vertical = verticalPaddingValue)
-                        )
-
-                    }
-                }
 
                 item {
                     Column(
@@ -139,171 +131,40 @@ fun AdminReportsScreen(
                             .padding(horizontalPaddingValue, verticalPaddingValue)
                     ) {
                         Text(
-                            text = "Tour",
+                            text = "User Verification",
                             color = Color(0xff333333),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier
                         )
-                        AppDropDownFilter(
-                            options = listOf("Recent", "...", "...", "..."),
-                            modifier = Modifier
-                                .align(Alignment.End)
-                                .padding(bottom = 3.dp)
-                        )
-                        ServiceReportCard(
-                            serviceImage = "",
-                            reporterImage = "",
-                            serviceName = "Quiapo Tour by Janella",
-                            serviceLocation = "Quiapo, Manila",
-                            reportDateTime = "2022-09-27 18:00:00",
-                            reporterFullName = "Maya Cruz",
-                            reporterUsername = "mcruz",
-                            reportType = "Scamming",
-                            report = "This is a scam. we checked the location and there’s no building on it.",
-                            // modifier = Modifier.padding(vertical = verticalPaddingValue)
-                        )
 
                     }
                 }
 
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontalPaddingValue, verticalPaddingValue)
-                    ) {
-                        Text(
-                            text = "Business",
-                            color = Color(0xff333333),
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier
-                        )
-                        AppDropDownFilter(
-                            options = listOf("Recent", "...", "...", "..."),
-                            modifier = Modifier
-                                .align(Alignment.End)
-                                .padding(bottom = 3.dp)
-                        )
-                        ServiceReportCard(
-                            serviceImage = "",
-                            reporterImage = "",
-                            serviceName = "Sta. Cruz Park",
-                            serviceLocation = "Quiapo, Manila",
-                            reportDateTime = "2022-09-27 18:00:00",
-                            reporterFullName = "Maya Cruz",
-                            reporterUsername = "mcruz",
-                            reportType = "Scamming",
-                            report = "This is a scam. we checked the location and there’s no building on it.",
-                            // modifier = Modifier.padding(vertical = verticalPaddingValue)
-                        )
+                items(pendingVerifications) { verification ->
+                    UserVerificationCard(
+                        userFullName = verification.userFullName,
+                        userUsername = verification.userUsername,
+                        userImage = verification.userImage,
+                        reportDateTime = verification.reportDateTime.toString(),
+                        firstValidIdType = verification.firstValidIdType,
+                        firstValidIdUrl = verification.firstValidIdUrl,
+                        secondValidIdType = verification.secondValidIdType,
+                        secondValidIdUrl = verification.secondValidIdUrl,
+                        verificationId = verification.verificationId,
+                        adminReports = adminReports,
+                        scope = scope
+                    )
 
-                    }
                 }
 
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontalPaddingValue, verticalPaddingValue)
-                    ) {
-                        Text(
-                            text = "Reviews",
-                            color = Color(0xff333333),
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier
-                        )
-                        AppDropDownFilter(
-                            options = listOf("Recent", "...", "...", "..."),
-                            modifier = Modifier
-                                .align(Alignment.End)
-                                .padding(bottom = 3.dp)
-                        )
-                        ReviewReportCard(
-                            serviceImage = "",
-                            reviewerImage = "",
-                            serviceName = "Quiapo Tour by Janella",
-                            serviceLocation = "Quiapo, Manila",
-                            reportDateTime = "2022-09-27 18:00:00",
-                            reviewerFullName = "Maya Cruz",
-                            reviewerUsername = "mcruz",
-                            reportType = "Inappropriate words used",
-                            review = "You fuckers are the worst!!",
-                            reviewDateTime = "2022-09-25 18:00:00",
-                            // modifier = Modifier.padding(vertical = verticalPaddingValue)
-                        )
-                    }
-                }
-
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontalPaddingValue, verticalPaddingValue)
-                    ) {
-                        Text(
-                            text = "Users",
-                            color = Color(0xff333333),
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier
-                        )
-                        AppDropDownFilter(
-                            options = listOf("Recent", "...", "...", "..."),
-                            modifier = Modifier
-                                .align(Alignment.End)
-                                .padding(bottom = 3.dp)
-                        )
-                        UserReportCard(
-                            userImage = "",
-                            reporterImage = "",
-                            userFullName = "Denice Lucio",
-                            userUsername = "denlucio",
-                            reportDateTime = "2022-09-27 18:00:00",
-                            reporterFullName = "Maya Cruz",
-                            reporterUsername = "mcruz",
-                            reportType = "Scamming",
-                            report = "This person is a known scammer, please remove her",
-                            // modifier = Modifier.padding(vertical = verticalPaddingValue)
-                        )
-                    }
-                }
-
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontalPaddingValue, verticalPaddingValue)
-                    ) {
-                        Text(
-                            text = "Feedback",
-                            color = Color(0xff333333),
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier
-                        )
-                        AppDropDownFilter(
-                            options = listOf("Recent", "...", "...", "..."),
-                            modifier = Modifier
-                                .align(Alignment.End)
-                                .padding(bottom = 3.dp)
-                        )
-                        FeedbackCard(
-                            userImage = "",
-                            userFullName = "Chino Abat",
-                            userUsername = "abatchi",
-                            feedbackDateTime = "2022-09-27 18:00:00",
-                            feedback = "Your application is very good, but I have a couple of suggestions that you could add since I found a couple of things....",
-                            // modifier = Modifier.padding(vertical = verticalPaddingValue)
-                        )
-                    }
-                }
             }
         }
     }
 }
+
+
+
 
 @Composable
 fun ServiceReportCard(
@@ -433,7 +294,9 @@ fun ServiceReportCard(
                             imageVector = ImageVector.vectorResource(id = R.drawable.warning),
                             contentDescription = null,
                             tint = Color(0xffF97664),
-                            modifier = Modifier.padding(start = 6.dp, end = 3.dp).offset(y = 1.dp)
+                            modifier = Modifier
+                                .padding(start = 6.dp, end = 3.dp)
+                                .offset(y = 1.dp)
                         )
                         Text(
                             text = reportType, // "Inappropriate words used",
@@ -672,20 +535,26 @@ fun ReviewReportCard(
 }
 
 @Composable
-fun UserReportCard(
+fun UserVerificationCard(
     modifier: Modifier = Modifier,
     userFullName: String,
     userUsername: String,
     userImage: String,
     reportDateTime: String,
-    reporterImage: String,
-    reporterFullName: String,
-    reporterUsername: String,
-    reportType: String,
-    report: String
+    firstValidIdType: String,
+    firstValidIdUrl: String,
+    secondValidIdType: String,
+    secondValidIdUrl: String,
+    verificationId: String,
+    adminReports: AdminReports,
+    scope: CoroutineScope
 ) {
 
+    val context = LocalContext.current
+
     val imagePlaceholder = "https://www.unfe.org/wp-content/uploads/2019/04/SM-placeholder.png"
+
+    val outputFormat = SimpleDateFormat("MMM dd, yyyy hh:mm:ss a", Locale.getDefault())
 
     Card(
         shape = RoundedCornerShape(10.dp),
@@ -732,19 +601,21 @@ fun UserReportCard(
                         fontSize = 8.sp
                     )
                 }
-                Icon(
-                    imageVector = ImageVector.vectorResource(id = R.drawable.recent_clock),
-                    contentDescription = null,
-                    tint = Color(0xff999999),
-                    modifier = Modifier.padding(horizontal = 3.dp)
-                )
-                Text(
-                    text = reportDateTime, //"2022-09-27 18:00:00",
-                    color = Color(0xff999999),
-                    fontSize = 8.sp,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.weight(1f)
-                )
+                Surface(
+                    shape = RoundedCornerShape(16.dp), // Adjust the corner radius as needed
+                    color = Color(0xFFF9A664),
+                    modifier = Modifier.padding(4.dp)
+                ) {
+                    Text(
+                        text = "For Approval",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+
+
 
             }
             Divider(
@@ -754,68 +625,70 @@ fun UserReportCard(
                     .fillMaxWidth()
                     .padding(vertical = 5.dp)
             )
-            Row(
-                modifier = Modifier.fillMaxWidth()
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
             ) {
-                AsyncImage(
-                    model = if (reporterImage == "") imagePlaceholder else reporterImage,
-                    contentDescription = "",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(27.dp)
-                        .clip(shape = RoundedCornerShape(27.dp))
-                )
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 5.dp)
-                ) {
-                    Row {
-                        Text(
-                            text = buildAnnotatedString {
-                                withStyle(
-                                    style = SpanStyle(
-                                        color = Color(0xff333333),
-                                        fontSize = 8.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                ) { append("$reporterFullName ") } //Maya Cruz
-                                withStyle(
-                                    style = SpanStyle(
-                                        color = Color(0xff999999),
-                                        fontSize = 6.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                ) { append("(") }
-                                withStyle(
-                                    style = SpanStyle(
-                                        color = Color(0xff999999),
-                                        fontSize = 6.sp
-                                    )
-                                ) { append("@$reporterUsername)") } //mcruz
-                            }
-                        )
-                        Icon(
-                            imageVector = ImageVector.vectorResource(id = R.drawable.warning),
-                            contentDescription = null,
-                            tint = Color(0xffF97664),
-                            modifier = Modifier.padding(start = 6.dp, end = 3.dp).offset(y = 1.dp)
-                        )
-                        Text(
-                            text = reportType, // "Inappropriate words used",
-                            color = Color(0xfff97664),
-                            fontSize = 8.sp
-                        )
 
-
-                    }
+                item {
                     Text(
-                        text = report,
-                        color = Color(0xff666666),
-                        fontSize = 8.sp,
-                        modifier = Modifier.fillMaxWidth()
+                        text = firstValidIdType, //"Denice Lucio",
+                        color = Color(0xff333333),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.CenterHorizontally)
+
                     )
+
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 20.dp)
+                            .fillMaxWidth()
+                            .height(100.dp)
+
+                    ) {
+                        AsyncImage(
+                            model = firstValidIdUrl,
+                            contentDescription = "",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+
+
                 }
+
+
+                item {
+                    Text(
+                        text = secondValidIdType, //"Denice Lucio",
+                        color = Color(0xff333333),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.CenterHorizontally)
+                    )
+                    Box(modifier = Modifier
+                        .padding(top = 20.dp)
+                        .fillMaxWidth()
+                        .height(100.dp)) {
+                        AsyncImage(
+                            model = secondValidIdUrl,
+                            contentDescription = "",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+
+
+                }
+
 
             }
             Row(
@@ -824,22 +697,44 @@ fun UserReportCard(
                     .fillMaxWidth()
                     .padding(top = 5.dp)
             ) {
+                Icon(
+                    imageVector = ImageVector.vectorResource(id = R.drawable.recent_clock),
+                    contentDescription = null,
+                    tint = Color(0xff999999),
+                    modifier = Modifier.padding(horizontal = 3.dp).wrapContentWidth(Alignment.Start).padding(top = 10.dp)
+                )
+                Text(
+                    text = reportDateTime, //"2022-09-27 18:00:00",
+                    color = Color(0xff999999),
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.weight(1f).wrapContentWidth(Alignment.Start).padding(top = 10.dp)
+                )
                 AppOutlinedButton(
-                    buttonText = "Delete",
-                    onClick = { /*TODO*/ },
+                    buttonText = "Deny",
+                    onClick = {
+                        scope.launch {
+                            adminReports.denyPendingVerifications(verificationId, context)
+                        }
+                    },
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                    contentFontSize = 10.sp,
+                    contentFontSize = 12.sp,
                     buttonShape = RoundedCornerShape(5.dp),
-                    modifier = Modifier.height(25.dp)//.width(55.dp)
+                    modifier = Modifier.height(30.dp)//.width(55.dp)
                 )
                 Spacer(modifier = Modifier.width(5.dp))
                 AppFilledButton(
-                    buttonText = "Take action",
-                    onClick = { /*TODO*/ },
+                    buttonText = "Approve",
+                    onClick = {
+                        scope.launch {
+                            adminReports.approvePendingVerifications(verificationId, context)
+                        }
+
+                    },
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                    contentFontSize = 10.sp,
+                    contentFontSize = 12.sp,
                     buttonShape = RoundedCornerShape(5.dp),
-                    modifier = Modifier.height(25.dp)
+                    modifier = Modifier.height(30.dp)
                 )
             }
         }
@@ -977,5 +872,15 @@ fun FeedbackCard(
 @Composable
 private fun ReportScreenPreview() {
 
-    AdminReportsScreen()
+   /* UserVerificationCard(
+        userImage = "",
+        userFullName = "Denice Lucio",
+        userUsername = "denlucio",
+        reportDateTime = "2022-09-27 18:00:00",
+        firstValidIdType = "POSTAL ID",
+        firstValidIdUrl = "https://firebasestorage.googleapis.com/v0/b/tripnila-20a77.appspot.com/o/1709488149228_1000009707?alt=media&token=fc19b530-c234-4141-90e4-c6e15d3374b1",
+        secondValidIdType = "SCHOOL ID",
+        secondValidIdUrl = "https://firebasestorage.googleapis.com/v0/b/tripnila-20a77.appspot.com/o/1709488149228_1000009707?alt=media&token=fc19b530-c234-4141-90e4-c6e15d3374b1",
+        // modifier = Modifier.padding(vertical = verticalPaddingValue)
+    )*/
 }

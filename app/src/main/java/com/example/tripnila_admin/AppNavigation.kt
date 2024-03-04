@@ -1,6 +1,7 @@
 package com.example.tripnila_admin
 
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -13,6 +14,7 @@ import com.example.tripnila_admin.screens.AdminDashboardScreen
 import com.example.tripnila_admin.screens.AdminProfileScreen
 import com.example.tripnila_admin.screens.AdminReportsScreen
 import com.example.tripnila_admin.viewmodels.AdminDashboard
+import com.example.tripnila_admin.viewmodels.AdminReports
 
 enum class LoginRoutes {
 
@@ -69,7 +71,8 @@ fun NavGraphBuilder.adminGraph(
         ) {
             AdminReportsScreen(
                 adminId = it.arguments?.getString("adminId") ?: "",
-                navController = navController
+                navController = navController,
+                adminReports = viewModel(modelClass = AdminReports::class.java)
             )
         }
         composable(
