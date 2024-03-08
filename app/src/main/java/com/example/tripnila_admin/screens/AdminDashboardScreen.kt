@@ -103,9 +103,11 @@ import java.util.Locale
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import com.example.tripnila_admin.common.ChartDropDownFilter
+import com.example.tripnila_admin.common.LoadingScreen
 import com.patrykandpatrick.vico.core.axis.AxisItemPlacer
 import com.patrykandpatrick.vico.core.axis.AxisPosition
 import com.patrykandpatrick.vico.core.axis.formatter.AxisValueFormatter
+import kotlinx.coroutines.delay
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -116,12 +118,17 @@ fun AdminDashboardScreen(
     dashboardViewModel : AdminDashboard
 ) {
 
+
+
+
     val horizontalPaddingValue = 16.dp
     val verticalPaddingValue = 10.dp
     val verifiedUserCount = dashboardViewModel.verifiedUser.collectAsState().value
     val allUserCount = dashboardViewModel.allUser.collectAsState().value
     // FOR BOTTOM NAVIGATION BAR
     val selectedItemIndex by rememberSaveable { mutableIntStateOf(0) }
+
+    val isLoading by dashboardViewModel.isLoading.collectAsState()
 
     // FOR SEARCH BAR
     var search by remember { mutableStateOf("") }
@@ -148,160 +155,162 @@ fun AdminDashboardScreen(
         modifier = Modifier
             .fillMaxSize()
     ){
-        Scaffold(
-            topBar = {
-                AppTopBar(
-                    headerText = "Dashboard",
-                    color = Color.White,
-                    scrollBehavior = scrollBehavior
-                )
-            },
-            bottomBar = {
-                if (navController != null) {
-                    AdminBottomNavigationBar(
-                        adminId = adminId,
-                        navController = navController,
-                        selectedItemIndex = selectedItemIndex
+
+        if (isLoading) {
+            LoadingScreen(isLoadingCompleted = false, isLightModeActive = true)
+        } else {
+            Scaffold(
+                topBar = {
+                    AppTopBar(
+                        headerText = "Dashboard",
+                        color = Color.White,
+                        scrollBehavior = scrollBehavior
                     )
-                }
-            },
-            modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
-        ) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(it)
+                },
+                bottomBar = {
+                    if (navController != null) {
+                        AdminBottomNavigationBar(
+                            adminId = adminId,
+                            navController = navController,
+                            selectedItemIndex = selectedItemIndex
+                        )
+                    }
+                },
+                modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
             ) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(it)
+                ) {
 
-                item {
-                    LazyVerticalGrid(
-                        userScrollEnabled = false,
-                        columns = GridCells.Fixed(3),
-                        modifier = Modifier
-                            .padding(horizontalPaddingValue, verticalPaddingValue)
-                            .fillMaxWidth()
-                            .height(120.dp)
-                    ) {
-                        items(6) { index ->
-                            val cardText = when (index) {
-                                0 -> "Users"
-                                1 -> "Staycation Listings"
-                                2 -> "Bookings"
-                                3 -> "Hosts"
-                                4 -> "Tours"
-                                5 -> "Businesses"
-                                else -> "Default Card Text"
-                            }
-
-
-                            val countLabel = when (index) {
-                                0 -> "tourist"
-                                1 -> "staycation"
-                                2 -> "staycation_booking"
-                                3 -> "host"
-                                4 -> "tour"
-                                5 -> "business"
-                                else -> ""
-                            }
-                            val totalCount = remember { mutableStateOf(0) }
-
-                            LaunchedEffect(key1 = countLabel) {
-                                val count = dashboardViewModel.getTotalCount(countLabel)
-
-                                totalCount.value = count
-                            }
-
-                            val color = when (index) {
-                                0 -> Color(0xffF9A664)
-                                1 -> Color(0xff9ED93D)
-                                2 -> Color(0xffF97664)
-                                3 -> Color(0xff8B64F9)
-                                4 -> Color(0xff56DFD7)
-                                5 -> Color(0xffE177E3)
-                                else -> Color.Gray
-                            }
-
-                            DashboardInfoCard(
-                                modifier = Modifier
-                                    .padding(8.dp)
-                                    .fillMaxWidth(),
-                                cardText = cardText,
-                                count = totalCount.value,
-                                color = color
-                            )
-                        }
-                    }
-                }
-
-                item {
-                    SalesChart(
-                        modifier = Modifier.padding(horizontalPaddingValue,verticalPaddingValue),
-                        viewModel = AdminDashboard()
-                    )
-                }
-
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontalPaddingValue, verticalPaddingValue)
-                    ) {
-                        Text(
-                            text = "Stats",
-                            color = Color(0xff333333),
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
+                    item {
+                        LazyVerticalGrid(
+                            userScrollEnabled = false,
+                            columns = GridCells.Fixed(3),
                             modifier = Modifier
-                        )
+                                .padding(horizontalPaddingValue, verticalPaddingValue)
+                                .fillMaxWidth()
+                                .height(120.dp)
+                        ) {
+                            items(6) { index ->
+                                val cardText = when (index) {
+                                    0 -> "Users"
+                                    1 -> "Staycation Listings"
+                                    2 -> "Bookings"
+                                    3 -> "Hosts"
+                                    4 -> "Tours"
+                                    5 -> "Businesses"
+                                    else -> "Default Card Text"
+                                }
 
-                        val totalProfitState = remember { mutableStateOf(0.0) }
-                        val itemCountState = remember { mutableStateOf(0) }
-                        val profitPercentageState = remember { mutableStateOf(0.0) }
 
-                        val totalProfitForYear by dashboardViewModel.totalProfitForYearLiveData.observeAsState(initial = 0.0)
-                        LaunchedEffect(Unit) {
-                            val (totalProfit, itemCount) = dashboardViewModel.getTodayProfitAndItemCount()
-                            val profitPercentage = dashboardViewModel.getPercentageDifference()
-                            val verifiedUser = dashboardViewModel.getVerifiedTouristCount()
-                            val count = dashboardViewModel.getTotalCount("tourist")
-                            dashboardViewModel.setVerifieduser(verifiedUser)
-                            dashboardViewModel.setAlluser(count)
-                            dashboardViewModel.getProfitForYear(2024)
-                            totalProfitState.value = totalProfit
-                            itemCountState.value = itemCount
-                            profitPercentageState.value = profitPercentage
+                                val countLabel = when (index) {
+                                    0 -> "tourist"
+                                    1 -> "staycation"
+                                    2 -> "staycation_booking"
+                                    3 -> "host"
+                                    4 -> "tour"
+                                    5 -> "business"
+                                    else -> ""
+                                }
+                                val totalCount = remember { mutableStateOf(0) }
+
+                                LaunchedEffect(key1 = countLabel) {
+                                    val count = dashboardViewModel.getTotalCount(countLabel)
+
+                                    totalCount.value = count
+                                }
+
+                                val color = when (index) {
+                                    0 -> Color(0xffF9A664)
+                                    1 -> Color(0xff9ED93D)
+                                    2 -> Color(0xffF97664)
+                                    3 -> Color(0xff8B64F9)
+                                    4 -> Color(0xff56DFD7)
+                                    5 -> Color(0xffE177E3)
+                                    else -> Color.Gray
+                                }
+
+                                DashboardInfoCard(
+                                    modifier = Modifier
+                                        .padding(8.dp)
+                                        .fillMaxWidth(),
+                                    cardText = cardText,
+                                    count = totalCount.value,
+                                    color = color
+                                )
+                            }
                         }
-                        ProfitCard(
-                            lastUpdateTime = "12:23 PM",
-                            percentage = profitPercentageState.value,
-                            profitAmount = totalProfitState.value.toInt(),
-                            bookingCount = itemCountState.value,
-                            modifier = Modifier.padding(bottom = verticalPaddingValue)
-                        )
-                        RevenueCard(
-                            revenueAmount = totalProfitForYear.toInt(),
-                            lastUpdateTime = "12:23 PM",
-                            percentage = 7.3,
-                            modifier = Modifier.padding(bottom = verticalPaddingValue)
-                        )
-                        VerifiedUsersCard(
-                            verifiedUsersCount = verifiedUserCount,
-                            totalUsersCount = allUserCount,
-                            lastUpdateTime = "12:23 PM",
+                    }
 
+                    item {
+                        SalesChart(
+                            modifier = Modifier.padding(horizontalPaddingValue,verticalPaddingValue),
+                            viewModel = AdminDashboard()
                         )
                     }
+
+                    item {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontalPaddingValue, verticalPaddingValue)
+                        ) {
+                            Text(
+                                text = "Stats",
+                                color = Color(0xff333333),
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier
+                            )
+
+                            val totalProfitState = remember { mutableStateOf(0.0) }
+                            val itemCountState = remember { mutableStateOf(0) }
+                            val profitPercentageState = remember { mutableStateOf(0.0) }
+
+                            val totalProfitForYear by dashboardViewModel.totalProfitForYearLiveData.observeAsState(initial = 0.0)
+                            LaunchedEffect(Unit) {
+                                val (totalProfit, itemCount) = dashboardViewModel.getTodayProfitAndItemCount()
+                                val profitPercentage = dashboardViewModel.getPercentageDifference()
+                                val verifiedUser = dashboardViewModel.getVerifiedTouristCount()
+                                val count = dashboardViewModel.getTotalCount("tourist")
+                                dashboardViewModel.setVerifieduser(verifiedUser)
+                                dashboardViewModel.setAlluser(count)
+                                dashboardViewModel.getProfitForYear(2024)
+                                totalProfitState.value = totalProfit
+                                itemCountState.value = itemCount
+                                profitPercentageState.value = profitPercentage
+                            }
+                            ProfitCard(
+                                lastUpdateTime = "12:23 PM",
+                                percentage = profitPercentageState.value,
+                                profitAmount = totalProfitState.value.toInt(),
+                                bookingCount = itemCountState.value,
+                                modifier = Modifier.padding(bottom = verticalPaddingValue)
+                            )
+                            RevenueCard(
+                                revenueAmount = totalProfitForYear.toInt(),
+                                lastUpdateTime = "12:23 PM",
+                                percentage = 7.3,
+                                modifier = Modifier.padding(bottom = verticalPaddingValue)
+                            )
+                            VerifiedUsersCard(
+                                verifiedUsersCount = verifiedUserCount,
+                                totalUsersCount = allUserCount,
+                                lastUpdateTime = "12:23 PM",
+
+                                )
+                        }
+                    }
+
                 }
-
-                item {
-
-
-                }
-
 
             }
-
         }
+
+
+
     }
 }
 
@@ -351,7 +360,7 @@ fun SalesChart(
     modifier: Modifier = Modifier,
     viewModel : AdminDashboard
 ) {
-    var year by remember { mutableStateOf(viewModel.selectedYear.value) }
+    val year by remember { mutableStateOf(viewModel.selectedYear.value) }
 
     // Observe changes in aggregated sales data based on the selected year
     val aggregatedData by viewModel.aggregatedSalesData.observeAsState(initial = emptyList())

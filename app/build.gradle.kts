@@ -31,11 +31,14 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+/*        *//*sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8*/
+        sourceCompatibility = JavaVersion.VERSION_19
+        targetCompatibility = JavaVersion.VERSION_19
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        /*jvmTarget = "1.8"*/
+        jvmTarget = "19"
     }
     buildFeatures {
         compose = true
@@ -81,4 +84,12 @@ dependencies {
 
     implementation ("androidx.compose.runtime:runtime-livedata:1.6.1")
     implementation ("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0-alpha01")
+
+    implementation ("org.apache.poi:poi:5.2.5")
+    implementation ("org.apache.poi:poi-ooxml:5.2.5")
+
+/*    implementation ("org.apache.logging.log4j:log4j-core:2.22.1")*/
+
+   // implementation ("org.apache.logging.log4j:log4j-core:2.23.0")
+
 }

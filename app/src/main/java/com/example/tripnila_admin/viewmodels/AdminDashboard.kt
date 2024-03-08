@@ -26,6 +26,9 @@ class AdminDashboard : ViewModel() {
     val aggregatedSalesData: LiveData<List<MonthTotal>> = _aggregatedSalesData
     val totalProfitForYearLiveData = MutableLiveData<Double>()
 
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading = _isLoading.asStateFlow()
+
     private val _verifiedUser = MutableStateFlow(0)
     val verifiedUser = _verifiedUser.asStateFlow()
 
@@ -47,7 +50,9 @@ class AdminDashboard : ViewModel() {
 
 
     suspend fun getTotalCount(collectionPath: String): Int {
+
         return withContext(Dispatchers.IO) {
+
             try {
                 // Perform the query to get all documents in the collection
                 val querySnapshot: QuerySnapshot = db.collection(collectionPath).get().await()
@@ -61,6 +66,7 @@ class AdminDashboard : ViewModel() {
                 -1
             }
         }
+
     }
 
     data class TodayProfitAndItemCount(val totalProfit: Double, val itemCount: Int)
@@ -180,6 +186,7 @@ class AdminDashboard : ViewModel() {
             _aggregatedSalesData.value = aggregatedData
             // Now aggregatedData contains a list of MonthTotal objects with the month and total amount
         }
+
     }
     fun getProfitForYear(year: Int) {
         val salesCollection = db.collection("staycation_booking")
