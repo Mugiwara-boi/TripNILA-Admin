@@ -2,6 +2,7 @@ package com.example.tripnila_admin.screens
 
 import android.content.Context
 import android.util.Log
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,7 +26,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
@@ -34,7 +36,9 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -70,7 +74,6 @@ import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.example.tripnila_admin.R
 import com.example.tripnila_admin.common.AdminBottomNavigationBar
-import com.example.tripnila_admin.common.AppDropDownFilter
 import com.example.tripnila_admin.common.AppFilledButton
 import com.example.tripnila_admin.common.AppOutlinedButton
 import com.example.tripnila_admin.common.AppRatingBar
@@ -79,8 +82,10 @@ import com.example.tripnila_admin.common.LoadingScreen
 import com.example.tripnila_admin.viewmodels.AdminReports
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.time.LocalDate
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
@@ -90,19 +95,31 @@ import java.util.Locale
 fun AdminReportsScreen(
     adminId: String = "",
     adminReports: AdminReports,
-    navController: NavHostController? = null
+    navController: NavHostController? = null,
+    onNavToGeneratedReport: (String) -> Unit
 ) {
+
+    val isFetchingStaycationBookings by adminReports.isFetchingStaycationBookings.collectAsState()
+    val isStaycationBookingsFetched by adminReports.isStaycationBookingsFetched.collectAsState()
+    val isFetchingTourBookings by adminReports.isFetchingTourBookings.collectAsState()
+    val isTourBookingsFetched by adminReports.isTourBookingsFetched.collectAsState()
 
     LaunchedEffect(adminId){
         adminReports.fetchPendingVerifications()
       //  adminReports.fetchStaycationBookings()
 
-      /*  val staycationBookingsDeferred = async { adminReports.fetchStaycationBookings() }
-        val tourBookingsDeferred = async { adminReports.fetchTourBookings() }
 
-        staycationBookingsDeferred.await()
-        tourBookingsDeferred.await()*/
+//        val staycationBookingsDeferred = async { adminReports.fetchStaycationBookings() }
+//        val tourBookingsDeferred = async { adminReports.fetchTourBookings() }
+//
+//        staycationBookingsDeferred.await()
+//        tourBookingsDeferred.await()
+
+
+
     }
+
+
 
 
     val horizontalPaddingValue = 16.dp
@@ -110,8 +127,12 @@ fun AdminReportsScreen(
 
     val pendingVerifications by adminReports.pendingVerifications.collectAsState()
     val isFetchingPendingVerifications by adminReports.isFetchingPendingVerifications.collectAsState()
-    val selectedReportFilter by adminReports.selectedReportFilter.collectAsState()
-    val isGeneratingExcel by adminReports.isGeneratingExcel.collectAsState()
+    val selectedPeriod by adminReports.selectedPeriod.collectAsState()
+    val selectedMonth by adminReports.selectedMonth.collectAsState()
+    val selectedYear by adminReports.selectedYear.collectAsState()
+    val selectedStartMonth by adminReports.selectedStartMonth.collectAsState()
+    val selectedEndMonth by adminReports.selectedEndMonth.collectAsState()
+//    val isGeneratingExcel by adminReports.isGeneratingExcel.collectAsState()
 
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -120,15 +141,41 @@ fun AdminReportsScreen(
 
     val selectedItemIndex by rememberSaveable { mutableIntStateOf(1) }
 
-    val options = listOf(
-        "All", "January", "February", "March", "April",
+
+    val selectionTab = listOf(
+        "Monthly", "Bi-yearly", "Yearly"
+    )
+
+    val monthOptions = listOf(
+        "January", "February", "March", "April",
         "May", "June", "July", "August",
         "September", "October", "November", "December"
     )
 
-    var expanded by remember { mutableStateOf(false) }
+    val biyearlyOptions = listOf(
+        "January - June", "July - December"
+    )
+
+    val yearOptions = (2023..LocalDate.now().year).toList().reversed()
+
+
+    var expandMonth by remember { mutableStateOf(false) }
   //  var selectedText by remember { mutableStateOf(options.firstOrNull() ?: "") }
-    val icon = if (expanded)
+    val monthIcon = if (expandMonth)
+        Icons.Filled.KeyboardArrowUp
+    else
+        Icons.Filled.KeyboardArrowDown
+
+    var expandMonthRange by remember { mutableStateOf(false) }
+    //  var selectedText by remember { mutableStateOf(options.firstOrNull() ?: "") }
+    val monthRangeIcon = if (expandMonthRange)
+        Icons.Filled.KeyboardArrowUp
+    else
+        Icons.Filled.KeyboardArrowDown
+
+    var expandYear by remember { mutableStateOf(false) }
+    //  var selectedText by remember { mutableStateOf(options.firstOrNull() ?: "") }
+    val yearIcon = if (expandYear)
         Icons.Filled.KeyboardArrowUp
     else
         Icons.Filled.KeyboardArrowDown
@@ -137,10 +184,24 @@ fun AdminReportsScreen(
 
     Log.d("AdminReportsScreen", "Pending verifications size: ${pendingVerifications.size}")
 
+    var showDialog by remember {
+        mutableStateOf(false)
+    }
+
     LaunchedEffect(generateExcelClicked) {
         if (generateExcelClicked) {
             adminReports.generateExcelFile(context)
             generateExcelClicked = false
+        }
+    }
+
+    LaunchedEffect(
+        isStaycationBookingsFetched,
+        isTourBookingsFetched
+    ) {
+        if (isStaycationBookingsFetched && isTourBookingsFetched) {
+            onNavToGeneratedReport("salesReport")
+            showDialog = false
         }
     }
 
@@ -179,6 +240,7 @@ fun AdminReportsScreen(
                 ) {
 
                     item {
+
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -191,59 +253,66 @@ fun AdminReportsScreen(
                                 fontWeight = FontWeight.Medium,
                                 modifier = Modifier.padding(bottom = 10.dp)
                             )
-
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.align(Alignment.End),
-                            ) {
-                                Text(
-                                    text = selectedReportFilter,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium,
-                                )
-                                IconButton(
-                                    modifier = Modifier.size(24.dp),
-                                    onClick = { expanded = true }
-                                ) {
-                                    Icon(
-                                        imageVector = icon,
-                                        contentDescription = "",
-                                    )
-                                }
-                                DropdownMenu(
-                                    expanded = expanded,
-                                    onDismissRequest = { expanded = false },
-                                    modifier = Modifier
-                                        .background(Color.White)
-                                ) {
-                                    options.forEach { label ->
-                                        DropdownMenuItem(
-                                            text = {
-                                                Text(
-                                                    text = label,
-                                                    fontSize = 12.sp
-                                                )
-                                            },
-                                            colors = MenuDefaults.itemColors(
-                                                textColor = Color(0xFF6B6B6B)
-                                            ),
-                                            onClick = {
-                                                adminReports.setSelectedFilter(label)
-                                                expanded = false
-                                            },
-                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
-                                        )
-                                    }
-                                }
-                            }
                             AppFilledButton(
-                                buttonText = if (selectedReportFilter == "All") "Generate $selectedReportFilter Report" else "Generate $selectedReportFilter's Report",
-                                isLoading = isGeneratingExcel,
+                                buttonText = "Generate Sales Report",
                                 onClick = {
-                                    generateExcelClicked = true
-                                },
-                                modifier = Modifier.align(Alignment.CenterHorizontally)
+                                    showDialog = true
+                                   // onNavToGeneratedReport()
+                                }
                             )
+
+//                            Row(
+//                                verticalAlignment = Alignment.CenterVertically,
+//                                modifier = Modifier.align(Alignment.End),
+//                            ) {
+//                                Text(
+//                                    text = selectedReportFilter,
+//                                    fontSize = 12.sp,
+//                                    fontWeight = FontWeight.Medium,
+//                                )
+//                                IconButton(
+//                                    modifier = Modifier.size(24.dp),
+//                                    onClick = { expanded = true }
+//                                ) {
+//                                    Icon(
+//                                        imageVector = icon,
+//                                        contentDescription = "",
+//                                    )
+//                                }
+//                                DropdownMenu(
+//                                    expanded = expanded,
+//                                    onDismissRequest = { expanded = false },
+//                                    modifier = Modifier
+//                                        .background(Color.White)
+//                                ) {
+//                                    options.forEach { label ->
+//                                        DropdownMenuItem(
+//                                            text = {
+//                                                Text(
+//                                                    text = label,
+//                                                    fontSize = 12.sp
+//                                                )
+//                                            },
+//                                            colors = MenuDefaults.itemColors(
+//                                                textColor = Color(0xFF6B6B6B)
+//                                            ),
+//                                            onClick = {
+//                                                adminReports.setSelectedFilter(label)
+//                                                expanded = false
+//                                            },
+//                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+//                                        )
+//                                    }
+//                                }
+//                            }
+//                            AppFilledButton(
+//                                buttonText = if (selectedReportFilter == "All") "Generate $selectedReportFilter Report" else "Generate $selectedReportFilter's Report",
+//                                isLoading = isGeneratingExcel,
+//                                onClick = {
+//                                    generateExcelClicked = true
+//                                },
+//                                modifier = Modifier.align(Alignment.CenterHorizontally)
+//                            )
                         }
                     }
 
@@ -286,9 +355,305 @@ fun AdminReportsScreen(
 
                 }
             }
+
+
+            if (showDialog) { //showOpeningDialog &&
+                AlertDialog(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color = MaterialTheme.colorScheme.surface,
+                            shape = RoundedCornerShape(size = 12.dp)
+                        ),
+                    onDismissRequest = { showDialog = false }
+                ) {
+                    Column(
+                        modifier = Modifier
+//                            .background(
+//                                color = Color.LightGray.copy(alpha = 0.3f)
+//                            )
+                            .padding(top = 12.dp, start = 12.dp, end = 12.dp, bottom = 12.dp),
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Text(
+                            text = "Generate Sales Reports",
+                            color = Color(0xff333333),
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
+
+                        Column(
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        ) {
+                            Text(
+                                text = "Select time period",
+                                color = Color(0xff333333),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                            Row(
+                                modifier = Modifier
+                                    .padding(vertical = 8.dp, horizontal = 12.dp)
+                                    .fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+
+                                selectionTab.forEach { tabLabel ->
+                                    SelectionTab(
+                                        tabLabel = tabLabel,
+                                        isSelected = tabLabel == selectedPeriod,
+                                        onTabSelected = {
+                                            adminReports.setSelectedPeriod(tabLabel)
+                                        },
+                                    )
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                if (selectedPeriod == "Monthly") {
+                                    Column {
+                                        Text(
+                                            text = "Select Month",
+                                            color = Color(0xff333333),
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            modifier = Modifier.padding(top = 8.dp)
+                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.padding(
+                                                vertical = 8.dp,
+                                                horizontal = 12.dp
+                                            )
+                                        ) {
+                                            Text(
+                                                text = selectedMonth,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Medium,
+                                            )
+                                            IconButton(
+                                                modifier = Modifier.size(24.dp),
+                                                onClick = { expandMonth = true }
+                                            ) {
+                                                Icon(
+                                                    imageVector = monthIcon,
+                                                    contentDescription = "",
+                                                )
+                                            }
+                                            DropdownMenu(
+                                                expanded = expandMonth,
+                                                onDismissRequest = { expandMonth = false },
+                                                modifier = Modifier
+                                                    .background(Color.White)
+                                            ) {
+                                                monthOptions.forEach { label ->
+                                                    DropdownMenuItem(
+                                                        text = {
+                                                            Text(
+                                                                text = label,
+                                                                fontSize = 12.sp
+                                                            )
+                                                        },
+                                                        colors = MenuDefaults.itemColors(
+                                                            textColor = Color(0xFF6B6B6B)
+                                                        ),
+                                                        onClick = {
+                                                            adminReports.setSelectedMonth(label)
+                                                            expandMonth = false
+                                                        },
+                                                        contentPadding = PaddingValues(
+                                                            horizontal = 10.dp,
+                                                            vertical = 0.dp
+                                                        )
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else if (selectedPeriod == "Bi-yearly") {
+                                    Column {
+                                        Text(
+                                            text = "Select Month Range",
+                                            color = Color(0xff333333),
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            modifier = Modifier.padding(top = 8.dp)
+                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.padding(
+                                                vertical = 8.dp,
+                                                horizontal = 12.dp
+                                            )
+                                        ) {
+                                            Text(
+                                                text = "$selectedStartMonth - $selectedEndMonth",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Medium,
+                                            )
+                                            IconButton(
+                                                modifier = Modifier.size(24.dp),
+                                                onClick = { expandMonthRange = true }
+                                            ) {
+                                                Icon(
+                                                    imageVector = monthRangeIcon,
+                                                    contentDescription = "",
+                                                )
+                                            }
+                                            DropdownMenu(
+                                                expanded = expandMonthRange,
+                                                onDismissRequest = { expandMonthRange = false },
+                                                modifier = Modifier
+                                                    .background(Color.White)
+                                            ) {
+                                                biyearlyOptions.forEachIndexed { index, label ->
+                                                    DropdownMenuItem(
+                                                        text = {
+                                                            Text(
+                                                                text = label,
+                                                                fontSize = 12.sp
+                                                            )
+                                                        },
+                                                        colors = MenuDefaults.itemColors(
+                                                            textColor = Color(0xFF6B6B6B)
+                                                        ),
+                                                        onClick = {
+                                                            adminReports.setSelectedMonthRange(index)
+                                                            expandMonthRange = false
+                                                        },
+                                                        contentPadding = PaddingValues(
+                                                            horizontal = 10.dp,
+                                                            vertical = 0.dp
+                                                        )
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                Column {
+                                    Text(
+                                        text = "Select Year",
+                                        color = Color(0xff333333),
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.padding(top = 8.dp)
+                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(
+                                            vertical = 8.dp,
+                                            horizontal = 12.dp
+                                        )
+                                    ) {
+                                        Text(
+                                            text = selectedYear.toString(),
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Medium,
+                                        )
+                                        IconButton(
+                                            modifier = Modifier.size(24.dp),
+                                            onClick = { expandYear = true }
+                                        ) {
+                                            Icon(
+                                                imageVector = yearIcon,
+                                                contentDescription = "",
+                                            )
+                                        }
+                                        DropdownMenu(
+                                            expanded = expandYear,
+                                            onDismissRequest = { expandYear = false },
+                                            modifier = Modifier
+                                                .background(Color.White)
+                                        ) {
+                                            yearOptions.forEach { label ->
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Text(
+                                                            text = label.toString(),
+                                                            fontSize = 12.sp
+                                                        )
+                                                    },
+                                                    colors = MenuDefaults.itemColors(
+                                                        textColor = Color(0xFF6B6B6B)
+                                                    ),
+                                                    onClick = {
+                                                        adminReports.setSelectedYear(label.toString())
+                                                        expandYear = false
+                                                    },
+                                                    contentPadding = PaddingValues(
+                                                        horizontal = 10.dp,
+                                                        vertical = 0.dp
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .padding(top = 12.dp)
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            AppOutlinedButton(
+                                buttonText = "Cancel",
+                                onClick = { showDialog = false }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            AppFilledButton(
+                                buttonText = "Confirm",
+                                isLoading = isFetchingStaycationBookings || isFetchingTourBookings,
+                                onClick = {
+                                    scope.launch {
+                                        val staycationBookingsDeferred = async { adminReports.fetchStaycationBookings() }
+                                        val tourBookingsDeferred = async { adminReports.fetchTourBookings() }
+
+                                        staycationBookingsDeferred.await()
+                                        tourBookingsDeferred.await()
+
+                                    }
+                                },
+                            )
+                        }
+
+                    }
+                }
+            }
         }
+    }
+}
 
 
+@Composable
+fun SelectionTab(
+    tabLabel: String,
+    isSelected: Boolean,
+    onTabSelected: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedButton(
+        onClick = onTabSelected,
+        border = BorderStroke(width = 1.dp, Color(0xFFF9A664)),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (isSelected) Color(0xFFF9A664) else Color.White
+        ),
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+        modifier = modifier.height(22.dp)
+    ) {
+        Text(
+            text = tabLabel,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = if (isSelected) Color.White else Color(0xFFF9A664),
+        )
     }
 }
 

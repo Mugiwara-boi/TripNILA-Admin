@@ -1,6 +1,7 @@
 package com.example.tripnila_admin.data
 
 data class Staycation(
+    val staycationId: String = "",
     val additionalFeePerGuest: Double = 0.0,
     val additionalInfo: String = "",
     val allowPets: Boolean = false,

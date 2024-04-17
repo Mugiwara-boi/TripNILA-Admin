@@ -10,6 +10,8 @@ import com.example.tripnila_admin.data.Tour
 import com.example.tripnila_admin.data.TourBooking
 import com.example.tripnila_admin.data.Tourist
 import com.example.tripnila_admin.data.TouristVerification
+import com.google.android.gms.tasks.Tasks.await
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.Dispatchers
@@ -34,6 +36,14 @@ import org.apache.logging.log4j.Logger
 import org.apache.poi.ss.usermodel.CellStyle
 import org.apache.poi.ss.usermodel.HorizontalAlignment
 import java.text.DecimalFormat
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.Month
+import java.time.ZoneId
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeFormatter.*
+import java.time.format.TextStyle
 import java.util.Calendar
 
 class AdminReports : ViewModel() {
@@ -49,6 +59,30 @@ class AdminReports : ViewModel() {
     private val _tourBookingReports = MutableStateFlow<List<TourBooking>>(emptyList())
     val tourBookingReports = _tourBookingReports.asStateFlow()
 
+    private val _staycationDataMap = MutableStateFlow<List<Map<String, String>>>(emptyList())
+    val staycationDataMap = _staycationDataMap.asStateFlow()
+
+    private val _tourDataMap = MutableStateFlow<List<Map<String, String>>>(emptyList())
+    val tourDataMap = _tourDataMap.asStateFlow()
+
+    private val _staycationTotalCollectedCommission = MutableStateFlow<Double>(0.0)
+    val staycationTotalCollectedCommission = _staycationTotalCollectedCommission.asStateFlow()
+
+    private val _staycationTotalPendingCommission = MutableStateFlow<Double>(0.0)
+    val staycationTotalPendingCommission = _staycationTotalPendingCommission.asStateFlow()
+
+    private val _staycationTotalGrossSale = MutableStateFlow<Double>(0.0)
+    val staycationTotalGrossSale = _staycationTotalGrossSale.asStateFlow()
+
+    private val _tourTotalCollectedCommission = MutableStateFlow<Double>(0.0)
+    val tourTotalCollectedCommission = _tourTotalCollectedCommission.asStateFlow()
+
+    private val _tourTotalPendingCommission = MutableStateFlow<Double>(0.0)
+    val tourTotalPendingCommission = _tourTotalPendingCommission.asStateFlow()
+
+    private val _tourTotalGrossSale = MutableStateFlow<Double>(0.0)
+    val tourTotalGrossSale = _tourTotalGrossSale.asStateFlow()
+
 
     private val _isFetchingStaycationBookings = MutableStateFlow(false)
     val isFetchingStaycationBookings = _isFetchingStaycationBookings.asStateFlow()
@@ -56,19 +90,287 @@ class AdminReports : ViewModel() {
     private val _isFetchingTourBookings = MutableStateFlow(false)
     val isFetchingTourBookings = _isFetchingTourBookings.asStateFlow()
 
+
+    private val _isStaycationBookingsFetched = MutableStateFlow(false)
+    val isStaycationBookingsFetched = _isStaycationBookingsFetched.asStateFlow()
+
+    private val _isTourBookingsFetched = MutableStateFlow(false)
+    val isTourBookingsFetched = _isTourBookingsFetched.asStateFlow()
+
+
+
     private val _isFetchingPendingVerifications = MutableStateFlow(false)
     val isFetchingPendingVerifications = _isFetchingPendingVerifications.asStateFlow()
 
     private val _isGeneratingExcel = MutableStateFlow(false)
     val isGeneratingExcel = _isGeneratingExcel.asStateFlow()
 
-    private val _selectedReportFilter = MutableStateFlow("All")
-    val selectedReportFilter =_selectedReportFilter.asStateFlow()
 
-    fun setSelectedFilter(filter: String) {
-        _selectedReportFilter.value = filter
+    private val _selectedPeriod = MutableStateFlow("Monthly")
+    val selectedPeriod = _selectedPeriod.asStateFlow()
+
+    private val _selectedMonth = MutableStateFlow(getCurrentMonthName())
+    val selectedMonth =_selectedMonth.asStateFlow()
+
+    private val _selectedStartMonth = MutableStateFlow("January")
+    val selectedStartMonth =_selectedStartMonth.asStateFlow()
+
+    private val _selectedEndMonth = MutableStateFlow("June")
+    val selectedEndMonth =_selectedEndMonth.asStateFlow()
+
+    private val _selectedYear = MutableStateFlow(getCurrentYear())
+    val selectedYear =_selectedYear.asStateFlow()
+
+
+
+    private val _dateRange = MutableStateFlow(getDateRangeForMonth())
+    val dateRange = _dateRange.asStateFlow()
+
+    private fun generateMapFromStaycationBookingReports() {
+
+        val currencySymbol = "₱"
+
+        val groupedByStaycationId = _staycationBookingReports.value.groupBy { it.staycation.staycationId }
+
+        val listOfMap = groupedByStaycationId.map { (staycationId, bookings) ->
+            val staycation = bookings.first().staycation
+            val host = bookings.first().host
+
+            val numberOfBookings = bookings.size
+            val grossBookingSales = bookings.sumOf { it.totalAmount }
+            val totalCollectedCommission = bookings.filter { it.bookingStatus == "Completed" }.sumOf { it.commission }
+            val totalPendingCommission = bookings.filter { it.bookingStatus != "Completed" }.sumOf { it.commission }
+
+            mapOf(
+                "staycationId" to staycationId,
+                "staycationName" to staycation.staycationTitle,
+                "hostName" to "${host.firstName} ${host.lastName}" ,
+                "numberOfBookings" to numberOfBookings.toString(),
+//                "grossBookingSales" to grossBookingSales.toString(),
+//                "collectedCommission" to totalCollectedCommission.toString(),
+//                "pendingCommission" to totalPendingCommission.toString(),
+                "grossBookingSales" to "$currencySymbol %.2f".format(grossBookingSales),
+                "collectedCommission" to "$currencySymbol %.2f".format(totalCollectedCommission),
+                "pendingCommission" to "$currencySymbol %.2f".format(totalPendingCommission)
+            )
+        }
+
+        listOfMap.forEach { map ->
+            Log.d("Staycation Booking Map", map.toString())
+        }
+
+        val totalSumOfCollectedCommission = listOfMap.sumOf {
+            it["collectedCommission"]!!.substring(currencySymbol.length).trim().toDouble()
+        }
+        Log.d("Total Collected Commission", "Total Sum of Collected Commission: $totalSumOfCollectedCommission")
+
+        val totalSumOfPendingCommission = listOfMap.sumOf {
+            it["pendingCommission"]!!.substring(currencySymbol.length).trim().toDouble()
+        }
+        Log.d("Total Pending Commission", "Total Sum of Pending Commission: $totalSumOfPendingCommission")
+
+        val totalSumOfGrossSale = listOfMap.sumOf {
+            it["grossBookingSales"]!!.substring(currencySymbol.length).trim().toDouble()
+        }
+        Log.d("Total Gross Sales", "Total Sum of Gross Sales: $totalSumOfGrossSale")
+
+//        val totalSumOfCollectedCommission = listOfMap.sumOf { it["collectedCommission"]!!.toDouble() }
+//        Log.d("Total Collected Commission", "Total Sum of Collected Commission: $totalSumOfCollectedCommission")
+//
+//        val totalSumOfPendingCommission = listOfMap.sumOf { it["pendingCommission"]!!.toDouble() }
+//        Log.d("Total Pending Commission", "Total Sum of Pending Commission: $totalSumOfPendingCommission")
+//
+//        val totalSumOfGrossSale = listOfMap.sumOf { it["grossBookingSales"]!!.toDouble() }
+//        Log.d("Total Gross Sales", "Total Sum of Gross Sales: $totalSumOfGrossSale")
+
+        _staycationDataMap.value = listOfMap
+        _staycationTotalCollectedCommission.value = totalSumOfCollectedCommission
+        _staycationTotalPendingCommission.value = totalSumOfPendingCommission
+        _staycationTotalGrossSale.value = totalSumOfGrossSale
+
+
+
+
+
+//        val totalGrossSalesByStaycationId = groupedByStaycationId.mapValues { (_, bookings) ->
+//            bookings.sumOf { it.totalAmount }
+//        }
+//
+//        val totalCollectedCommissionByStaycationId = groupedByStaycationId.mapValues { (_, bookings) ->
+//            bookings.filter { it.bookingStatus == "Completed" }.sumOf { it.commission }
+//        }
+//
+//        val totalPendingCommissionByStaycationId = groupedByStaycationId.mapValues { (_, bookings) ->
+//            bookings.filter { it.bookingStatus != "Completed" }.sumOf { it.commission }
+//        }
+//
+//        totalGrossSalesByStaycationId.forEach { (staycationId, totalGrossSales) ->
+//            Log.d("Gross Sales from Staycation", "Staycation ID: $staycationId, Total Gross Sales: $totalGrossSales")
+//        }
+//
+//        totalCollectedCommissionByStaycationId.forEach { (staycationId, totalCollectedCommission) ->
+//            Log.d("Commission from Staycation", "Staycation ID: $staycationId, Total Collected Commission: $totalCollectedCommission")
+//        }
+//
+//        totalPendingCommissionByStaycationId.forEach { (staycationId, totalPendingCommission) ->
+//            Log.d("Commission from Staycation", "Staycation ID: $staycationId, Total Pending Commission: $totalPendingCommission")
+//        }
+////
 
     }
+
+    private fun generateMapFromTourBookingReports() {
+
+        val currencySymbol = "₱"
+
+        val groupedByTourId = _tourBookingReports.value.groupBy { it.tour.tourId }
+
+        val listOfMap = groupedByTourId.map { (tourId, bookings) ->
+            val tour = bookings.first().tour
+            val host = bookings.first().host
+
+            val numberOfBookings = bookings.size
+            val grossBookingSales = bookings.sumOf { it.totalAmount }
+            val totalCollectedCommission = bookings.filter { it.bookingStatus == "Completed" }.sumOf { it.commission }
+            val totalPendingCommission = bookings.filter { it.bookingStatus != "Completed" }.sumOf { it.commission }
+
+            mapOf(
+                "tourId" to tourId,
+                "tourName" to tour.tourTitle,
+                "hostName" to "${host.firstName} ${host.lastName}" ,
+                "numberOfBookings" to numberOfBookings.toString(),
+//                "grossBookingSales" to grossBookingSales.toString(),
+//                "collectedCommission" to totalCollectedCommission.toString(),
+//                "pendingCommission" to totalPendingCommission.toString(),
+                "grossBookingSales" to "$currencySymbol %.2f".format(grossBookingSales),
+                "collectedCommission" to "$currencySymbol %.2f".format(totalCollectedCommission),
+                "pendingCommission" to "$currencySymbol %.2f".format(totalPendingCommission)
+            )
+        }
+
+        listOfMap.forEach { map ->
+            Log.d("Tour Booking Map", map.toString())
+        }
+
+        val totalSumOfCollectedCommission = listOfMap.sumOf {
+            it["collectedCommission"]!!.substring(currencySymbol.length).trim().toDouble()
+        }
+        Log.d("Total Collected Commission", "Total Sum of Collected Commission: $totalSumOfCollectedCommission")
+
+        val totalSumOfPendingCommission = listOfMap.sumOf {
+            it["pendingCommission"]!!.substring(currencySymbol.length).trim().toDouble()
+        }
+        Log.d("Total Pending Commission", "Total Sum of Pending Commission: $totalSumOfPendingCommission")
+
+        val totalSumOfGrossSale = listOfMap.sumOf {
+            it["grossBookingSales"]!!.substring(currencySymbol.length).trim().toDouble()
+        }
+        Log.d("Total Gross Sales", "Total Sum of Gross Sales: $totalSumOfGrossSale")
+//
+//        val totalSumOfCollectedCommission = listOfMap.sumOf { it["collectedCommission"]!!.toDouble() }
+//        Log.d("Total Collected Commission", "Total Sum of Collected Commission: $totalSumOfCollectedCommission")
+//
+//        val totalSumOfPendingCommission = listOfMap.sumOf { it["pendingCommission"]!!.toDouble() }
+//        Log.d("Total Pending Commission", "Total Sum of Pending Commission: $totalSumOfPendingCommission")
+//
+//        val totalSumOfGrossSale = listOfMap.sumOf { it["grossBookingSales"]!!.toDouble() }
+//        Log.d("Total Gross Sales", "Total Sum of Gross Sales: $totalSumOfGrossSale")
+
+        _tourDataMap.value = listOfMap
+        _tourTotalCollectedCommission.value = totalSumOfCollectedCommission
+        _tourTotalPendingCommission.value = totalSumOfPendingCommission
+        _tourTotalGrossSale.value = totalSumOfGrossSale
+
+    }
+
+
+    fun setSelectedPeriod(period: String) {
+        _selectedPeriod.value = period
+        _dateRange.value = when(_selectedPeriod.value) {
+            "Monthly" -> getDateRangeForMonth()
+            "Bi-yearly" -> getDateRangeForMonths()
+            "Yearly" -> getDateRangeForYear()
+            else -> "Unregistered Report Type"
+        }
+
+        Log.d("Date Range", _dateRange.value)
+
+    }
+
+    fun setSelectedMonth(filter: String) {
+        _selectedMonth.value = filter
+
+    }
+
+    fun setSelectedMonthRange(index: Int) {
+        if (index == 0) {
+            _selectedStartMonth.value = "January"
+            _selectedEndMonth.value = "June"
+        } else {
+            _selectedStartMonth.value = "July"
+            _selectedEndMonth.value = "December"
+        }
+    }
+
+    fun setSelectedYear(filter: String) {
+        _selectedYear.value = filter.toInt()
+
+    }
+
+    private fun getCurrentMonthName(): String {
+        val currentMonth = LocalDate.now().month
+        return currentMonth.getDisplayName(TextStyle.FULL, Locale.getDefault())
+    }
+
+    private fun getCurrentYear(): Int {
+        return LocalDate.now().year
+    }
+
+    private fun getDateRangeForMonth(): String {
+        val month = Month.values().find {
+            it.getDisplayName(TextStyle.FULL, Locale.getDefault()).equals(_selectedMonth.value, ignoreCase = true)
+        }
+        return if (month != null) {
+            val startDate = LocalDate.of(_selectedYear.value, month, 1)
+            val endDate = startDate.plusMonths(1).minusDays(1)
+            val formatter = ofPattern("MM/dd/yyyy")
+            val startDateString = startDate.format(formatter)
+            val endDateString = endDate.format(formatter)
+            "$startDateString-$endDateString"
+        } else {
+            ""
+        }
+    }
+
+    private fun getDateRangeForMonths(): String {
+        val startMonth = Month.values().find {
+            it.getDisplayName(TextStyle.FULL, Locale.getDefault()).equals(_selectedStartMonth.value, ignoreCase = true)
+        }
+        val endMonth = Month.values().find {
+            it.getDisplayName(TextStyle.FULL, Locale.getDefault()).equals(_selectedEndMonth.value, ignoreCase = true)
+        }
+
+        return if (startMonth != null && endMonth != null) {
+            val startDate = LocalDate.of(_selectedYear.value, startMonth, 1)
+            val endDate = LocalDate.of(_selectedYear.value, endMonth, 1).plusMonths(1).minusDays(1)
+            val formatter = ofPattern("MM/dd/yyyy")
+            val startDateString = startDate.format(formatter)
+            val endDateString = endDate.format(formatter)
+            "$startDateString-$endDateString"
+        } else {
+            ""
+        }
+    }
+
+    private fun getDateRangeForYear(): String {
+        val startDate = LocalDate.of(_selectedYear.value, 1, 1)
+        val endDate = LocalDate.of(_selectedYear.value, 12, 31)
+        val formatter = ofPattern("MM/dd/yyyy")
+        val startDateString = startDate.format(formatter)
+        val endDateString = endDate.format(formatter)
+        return "$startDateString-$endDateString"
+    }
+
 
 
     suspend fun approvePendingVerifications(verificationId: String, context: Context) {
@@ -111,42 +413,21 @@ class AdminReports : ViewModel() {
         }
     }
 
-    private suspend fun fetchTourBookings(): List<TourBooking> {
+    suspend fun fetchTourBookings(): List<TourBooking> {
 
         _isFetchingTourBookings.value = true
 
-        val month = _selectedReportFilter.value
+        val (startTimestamp, endTimestamp) = parseDateRange()
+
         val tourBookings = mutableListOf<TourBooking>()
 
         try {
-            val query = if (month != "All") {
-
-                val calendar = Calendar.getInstance()
-                val dateFormat = SimpleDateFormat("MMMM", Locale.ENGLISH)
-                calendar.time = dateFormat.parse(month) ?: Date()
-
-                val currentYear = Calendar.getInstance().get(Calendar.YEAR)
-                calendar.set(Calendar.YEAR, currentYear)
-
-                val startDate = calendar.apply { set(Calendar.DAY_OF_MONTH, 1) }.time
-
-                // Set the calendar to the last day of the current month
-                calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH))
-                calendar.set(Calendar.HOUR_OF_DAY, 23)
-                calendar.set(Calendar.MINUTE, 59)
-                calendar.set(Calendar.SECOND, 59)
-                calendar.set(Calendar.MILLISECOND, 999)
-
-                val endDate = calendar.time
-
+            val query =
                 db.collection("tour_booking")
-                    .whereGreaterThanOrEqualTo("bookingDate", startDate)
-                    .whereLessThanOrEqualTo("bookingDate", endDate)
+                    .whereGreaterThanOrEqualTo("bookingDate", startTimestamp)
+                    .whereLessThanOrEqualTo("bookingDate", endTimestamp)
                     .orderBy("bookingDate", Query.Direction.ASCENDING)
-            } else {
-                db.collection("tour_booking")
-                    .orderBy("bookingDate", Query.Direction.ASCENDING)
-            }
+
 
             val querySnapshot = query.get().await()
 
@@ -183,59 +464,40 @@ class AdminReports : ViewModel() {
 
 
                 tourBookings.add(tourBooking)
+
+                Log.d("Tour Booking", tourBooking.toString())
             }
 
             _tourBookingReports.value = tourBookings
+            generateMapFromTourBookingReports()
 
-            Log.d("Tour Bookings", _tourBookingReports.value.toString())
+          //  Log.d("Tour Bookings", _tourBookingReports.value.toString())
 
         } catch (e: Exception) {
             Log.e("Tour", "Error fetching tour bookings: ${e.message}")
         } finally {
             _isFetchingTourBookings.value = false
+            _isTourBookingsFetched.value = true
         }
 
         return tourBookings
     }
 
-
-
-    private suspend fun fetchStaycationBookings(): List<StaycationBooking> {
+    suspend fun fetchStaycationBookings(): List<StaycationBooking> {
 
         _isFetchingStaycationBookings.value = true
 
-        val month = _selectedReportFilter.value
+        val (startTimestamp, endTimestamp) = parseDateRange()
+
         val staycationBookings = mutableListOf<StaycationBooking>()
 
         try {
-            val query = if (month != "All") {
 
-                val calendar = Calendar.getInstance()
-                val dateFormat = SimpleDateFormat("MMMM", Locale.ENGLISH)
-                calendar.time = dateFormat.parse(month) ?: Date()
+            val query = db.collection("staycation_booking")
+                .whereGreaterThanOrEqualTo("bookingDate", startTimestamp)
+                .whereLessThanOrEqualTo("bookingDate", endTimestamp)
+                .orderBy("bookingDate", Query.Direction.ASCENDING)
 
-                val currentYear = Calendar.getInstance().get(Calendar.YEAR)
-                calendar.set(Calendar.YEAR, currentYear)
-
-                val startDate = calendar.apply { set(Calendar.DAY_OF_MONTH, 1) }.time
-
-                // Set the calendar to the last day of the current month
-                calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH))
-                calendar.set(Calendar.HOUR_OF_DAY, 23)
-                calendar.set(Calendar.MINUTE, 59)
-                calendar.set(Calendar.SECOND, 59)
-                calendar.set(Calendar.MILLISECOND, 999)
-
-                val endDate = calendar.time
-
-                db.collection("staycation_booking")
-                    .whereGreaterThanOrEqualTo("bookingDate", startDate)
-                    .whereLessThanOrEqualTo("bookingDate", endDate)
-                    .orderBy("bookingDate", Query.Direction.ASCENDING)
-            } else {
-                db.collection("staycation_booking")
-                    .orderBy("bookingDate", Query.Direction.ASCENDING)
-            }
 
             val querySnapshot = query.get().await()
 
@@ -258,7 +520,7 @@ class AdminReports : ViewModel() {
 
                 val staycation = fetchStaycationDocumentById(staycationId)
 
-                Log.d("Host Id", staycation.hostId)
+                //   Log.d("Host Id", staycation.hostId)
 
                 val host = fetchTouristData(staycation.hostId.substring(5))
                 val tourist = fetchTouristData(touristId)
@@ -278,21 +540,238 @@ class AdminReports : ViewModel() {
                     bookingStatus,
                     bookingDate
                 )
-
-
                 staycationBookings.add(staycationBooking)
+
+                Log.d("Staycation Booking", staycationBooking.toString())
             }
 
             _staycationBookingReports.value = staycationBookings
+            generateMapFromStaycationBookingReports()
 
         } catch (e: Exception) {
             Log.e("StaycationRepository", "Error fetching staycation bookings: ${e.message}")
         } finally {
             _isFetchingStaycationBookings.value = false
+            _isStaycationBookingsFetched.value = true
+
+            Log.d("Fetching Status", ": ${_isFetchingStaycationBookings.value}")
+            Log.d("Fetched Status", ": ${_isStaycationBookingsFetched.value}")
         }
 
         return staycationBookings
     }
+
+    fun parseDateRange(): Pair<Timestamp, Timestamp> {
+        val dateRangeString = _dateRange.value
+        val dateRangeParts = dateRangeString.split("-")
+        val startDateString = dateRangeParts.firstOrNull()
+        val endDateString = dateRangeParts.lastOrNull()
+
+        // val startDate = Timestamp.valueOf(LocalDateTime.parse(startDateString, DateTimeFormatter.ofPattern("MM/dd/yyyy")))
+
+        val startDate = LocalDate.parse(startDateString, DateTimeFormatter.ofPattern("MM/dd/yyyy"))
+        val endDate = LocalDate.parse(endDateString, DateTimeFormatter.ofPattern("MM/dd/yyyy"))
+
+        val startTimestamp = Timestamp(startDate.atStartOfDay().toEpochSecond(ZoneOffset.ofHours(8)), 0)
+        val endTimestamp = Timestamp(endDate.atTime(23, 59, 59).toEpochSecond(ZoneOffset.ofHours(8)), 0)
+
+        Log.d("Start Time Stamp", startTimestamp.toString())
+        Log.d("End Time Stamp", endTimestamp.toString())
+        Log.d("Start Date", startTimestamp.toDate().toString())
+        Log.d("End Date", endTimestamp.toDate().toString())
+
+        return Pair(startTimestamp, endTimestamp)
+    }
+
+
+//    suspend fun fetchStaycationBookings(): List<StaycationBooking> {
+//
+//        _isFetchingStaycationBookings.value = true
+//
+//       // val month = _selectedReportFilter.value
+//        val month = "All"
+//        val staycationBookings = mutableListOf<StaycationBooking>()
+//
+//        try {
+//            val query = if (month != "All") {
+//
+//                val calendar = Calendar.getInstance()
+//                val dateFormat = SimpleDateFormat("MMMM", Locale.ENGLISH)
+//                calendar.time = dateFormat.parse(month) ?: Date()
+//
+//                val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+//                calendar.set(Calendar.YEAR, currentYear)
+//
+//                val startDate = calendar.apply { set(Calendar.DAY_OF_MONTH, 1) }.time
+//
+//                // Set the calendar to the last day of the current month
+//                calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH))
+//                calendar.set(Calendar.HOUR_OF_DAY, 23)
+//                calendar.set(Calendar.MINUTE, 59)
+//                calendar.set(Calendar.SECOND, 59)
+//                calendar.set(Calendar.MILLISECOND, 999)
+//
+//                val endDate = calendar.time
+//
+//                db.collection("staycation_booking")
+//                    .whereGreaterThanOrEqualTo("bookingDate", startDate)
+//                    .whereLessThanOrEqualTo("bookingDate", endDate)
+//                    .orderBy("bookingDate", Query.Direction.ASCENDING)
+//            } else {
+//                db.collection("staycation_booking")
+//                    .orderBy("bookingDate", Query.Direction.ASCENDING)
+//            }
+//
+//            val querySnapshot = query.get().await()
+//
+//
+//            for (document in querySnapshot.documents) {
+//                val additionalFee = document.getDouble("additionalFee") ?: 0.0
+//                val bookingDate = document.getTimestamp("bookingDate")?.toDate() ?: Date()
+//                val bookingStatus = document.getString("bookingStatus") ?: ""
+//                val checkInDate = document.getTimestamp("checkInDate")?.toDate() ?: Date()
+//                val checkOutDate = document.getTimestamp("checkOutDate")?.toDate() ?: Date()
+//                val commission = document.getDouble("commission") ?: 0.0
+//                val noOfGuests = document.getLong("noOfGuests")?.toInt() ?: 0
+//                val noOfInfants = document.getLong("noOfInfants")?.toInt() ?: 0
+//                val noOfPets = document.getLong("noOfPets")?.toInt() ?: 0
+//                val staycationId = document.getString("staycationId") ?: ""
+//                val totalAmount = document.getDouble("totalAmount") ?: 0.0
+//                val touristId = document.getString("touristId") ?: ""
+//
+//
+//
+//                val staycation = fetchStaycationDocumentById(staycationId)
+//
+//             //   Log.d("Host Id", staycation.hostId)
+//
+//                val host = fetchTouristData(staycation.hostId.substring(5))
+//                val tourist = fetchTouristData(touristId)
+//
+//                val staycationBooking = StaycationBooking(
+//                    host,
+//                    tourist,
+//                    staycation,
+//                    checkInDate,
+//                    checkOutDate,
+//                    noOfGuests,
+//                    noOfInfants,
+//                    noOfPets,
+//                    additionalFee,
+//                    totalAmount,
+//                    commission,
+//                    bookingStatus,
+//                    bookingDate
+//                )
+//
+//
+//                staycationBookings.add(staycationBooking)
+//
+//                Log.d("Staycation Booking", staycationBooking.toString())
+//            }
+//
+//            _staycationBookingReports.value = staycationBookings
+//
+//        } catch (e: Exception) {
+//            Log.e("StaycationRepository", "Error fetching staycation bookings: ${e.message}")
+//        } finally {
+//            _isFetchingStaycationBookings.value = false
+//            _isStaycationBookingsFetched.value = true
+//        }
+//
+//        return staycationBookings
+////    }
+//
+//    suspend fun fetchTourBookings(): List<TourBooking> {
+//
+//        _isFetchingTourBookings.value = true
+//
+//        //  val month = _selectedReportFilter.value
+//        val month = "All"
+//        val tourBookings = mutableListOf<TourBooking>()
+//
+//        try {
+//            val query = if (month != "All") {
+//
+//                val calendar = Calendar.getInstance()
+//                val dateFormat = SimpleDateFormat("MMMM", Locale.ENGLISH)
+//                calendar.time = dateFormat.parse(month) ?: Date()
+//
+//                val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+//                calendar.set(Calendar.YEAR, currentYear)
+//
+//                val startDate = calendar.apply { set(Calendar.DAY_OF_MONTH, 1) }.time
+//
+//                // Set the calendar to the last day of the current month
+//                calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH))
+//                calendar.set(Calendar.HOUR_OF_DAY, 23)
+//                calendar.set(Calendar.MINUTE, 59)
+//                calendar.set(Calendar.SECOND, 59)
+//                calendar.set(Calendar.MILLISECOND, 999)
+//
+//                val endDate = calendar.time
+//
+//                db.collection("tour_booking")
+//                    .whereGreaterThanOrEqualTo("bookingDate", startDate)
+//                    .whereLessThanOrEqualTo("bookingDate", endDate)
+//                    .orderBy("bookingDate", Query.Direction.ASCENDING)
+//            } else {
+//                db.collection("tour_booking")
+//                    .orderBy("bookingDate", Query.Direction.ASCENDING)
+//            }
+//
+//            val querySnapshot = query.get().await()
+//
+//            for (document in querySnapshot.documents) {
+//                val bookingDate = document.getTimestamp("bookingDate")?.toDate() ?: Date()
+//                val bookingStatus = document.getString("bookingStatus") ?: ""
+//                val commission = document.getDouble("commission") ?: 0.0
+//                val endTime = document.getString("endTime") ?: ""
+//                val noOfGuests = document.getLong("noOfGuests")?.toInt() ?: 0
+//                val startTime = document.getString("startTime") ?: ""
+//                val totalAmount = document.getDouble("totalAmount") ?: 0.0
+//                //    val tourAvailabilityId = document.getString("tourAvailabilityId") ?: ""
+//                val tourDate = document.getString("tourDate") ?: ""
+//                val tourId = document.getString("tourId") ?: ""
+//                val touristId = document.getString("touristId") ?: ""
+//
+//                val tour = fetchTourDocumentById(tourId)
+//                val host = fetchTouristData(tour.hostId.substring(5))
+//                val tourist = fetchTouristData(touristId)
+//
+//                val tourBooking = TourBooking(
+//                    host,
+//                    tourist,
+//                    tour,
+//                    noOfGuests,
+//                    startTime,
+//                    endTime,
+//                    tourDate,
+//                    totalAmount,
+//                    commission,
+//                    bookingStatus,
+//                    bookingDate
+//                )
+//
+//
+//                tourBookings.add(tourBooking)
+//
+//                Log.d("Tour Booking", tourBooking.toString())
+//            }
+//
+//            _tourBookingReports.value = tourBookings
+//
+//            //  Log.d("Tour Bookings", _tourBookingReports.value.toString())
+//
+//        } catch (e: Exception) {
+//            Log.e("Tour", "Error fetching tour bookings: ${e.message}")
+//        } finally {
+//            _isFetchingTourBookings.value = false
+//            _isTourBookingsFetched.value = true
+//        }
+//
+//        return tourBookings
+//    }
 
 
     private suspend fun fetchTourDocumentById(documentId: String): Tour {
@@ -304,39 +783,40 @@ class AdminReports : ViewModel() {
             val documentSnapshot = tourRef.get().await()
 
             if (documentSnapshot.exists()) {
-                val tourId = documentSnapshot.id
                 val hostId = documentSnapshot.getString("hostId") ?: ""
-                val tourContact = documentSnapshot.getString("tourContact") ?: ""
-                val tourDescription = documentSnapshot.getString("tourDescription") ?: ""
-                val tourDuration = documentSnapshot.getString("tourDuration") ?: ""
-                val tourEmail = documentSnapshot.getString("tourEmail") ?: ""
-                val tourFacebook = documentSnapshot.getString("tourFacebook") ?: ""
-                val tourInstagram = documentSnapshot.getString("tourInstagram") ?: ""
-                val tourLanguage = documentSnapshot.getString("tourLanguage") ?: ""
-                val tourLat = documentSnapshot.getDouble("tourLat") ?: 0.0
-                val tourLng = documentSnapshot.getDouble("tourLng") ?: 0.0
-                val tourLocation = documentSnapshot.getString("tourLocation") ?: ""
-                val tourPrice = documentSnapshot.getDouble("tourPrice") ?: 0.0
                 val tourTitle = documentSnapshot.getString("tourTitle") ?: ""
-                val tourType = documentSnapshot.getString("tourType") ?: ""
+//                val tourContact = documentSnapshot.getString("tourContact") ?: ""
+//                val tourDescription = documentSnapshot.getString("tourDescription") ?: ""
+//                val tourDuration = documentSnapshot.getString("tourDuration") ?: ""
+//                val tourEmail = documentSnapshot.getString("tourEmail") ?: ""
+//                val tourFacebook = documentSnapshot.getString("tourFacebook") ?: ""
+//                val tourInstagram = documentSnapshot.getString("tourInstagram") ?: ""
+//                val tourLanguage = documentSnapshot.getString("tourLanguage") ?: ""
+//                val tourLat = documentSnapshot.getDouble("tourLat") ?: 0.0
+//                val tourLng = documentSnapshot.getDouble("tourLng") ?: 0.0
+//                val tourLocation = documentSnapshot.getString("tourLocation") ?: ""
+//                val tourPrice = documentSnapshot.getDouble("tourPrice") ?: 0.0
+ //               val tourType = documentSnapshot.getString("tourType") ?: ""
 
 
                 Tour(
-                    tourId = tourId,
-                    tourContact = tourContact,
-                    tourDescription = tourDescription,
-                    tourDuration = tourDuration,
-                    tourEmail = tourEmail,
-                    tourFacebook = tourFacebook,
-                    tourInstagram = tourInstagram,
-                    tourLanguage = tourLanguage,
-                    tourLat = tourLat,
-                    tourLng = tourLng,
-                    tourLocation = tourLocation,
-                    tourPrice = tourPrice,
+                    tourId = documentId,
                     tourTitle = tourTitle,
-                    tourType = tourType,
-                    hostId = hostId
+                    hostId = hostId,
+//                    tourContact = tourContact,
+//                    tourDescription = tourDescription,
+//                    tourDuration = tourDuration,
+//                    tourEmail = tourEmail,
+//                    tourFacebook = tourFacebook,
+//                    tourInstagram = tourInstagram,
+//                    tourLanguage = tourLanguage,
+//                    tourLat = tourLat,
+//                    tourLng = tourLng,
+//                    tourLocation = tourLocation,
+//                    tourPrice = tourPrice,
+//
+//                    tourType = tourType,
+
                 )
             } else {
                 Tour()
@@ -357,65 +837,66 @@ class AdminReports : ViewModel() {
 
             if (documentSnapshot.exists()) {
                 val hostId = documentSnapshot.getString("hostId") ?: ""
-                val noOfGuests = documentSnapshot.getLong("noOfGuests")?.toInt() ?: 0
-                val noOfBedrooms = documentSnapshot.getLong("noOfBedrooms")?.toInt() ?: 0
-                val noOfBeds = documentSnapshot.getLong("noOfBeds")?.toInt() ?: 0
-                val noOfBathrooms = documentSnapshot.getLong("noOfBathrooms")?.toInt() ?: 0
-                val staycationDescription = documentSnapshot.getString("staycationDescription") ?: ""
-                val staycationLocation = documentSnapshot.getString("staycationLocation") ?: ""
-                val staycationLat = documentSnapshot.getDouble("staycationLat") ?: 0.0
-                val staycationLng = documentSnapshot.getDouble("staycationLng") ?: 0.0
-                val staycationPrice = documentSnapshot.getDouble("staycationPrice") ?: 0.0
-                val staycationSpace = documentSnapshot.getString("staycationSpace") ?: ""
                 val staycationTitle = documentSnapshot.getString("staycationTitle") ?: ""
-                val staycationType = documentSnapshot.getString("staycationType") ?: ""
-                val hasSecurityCamera = documentSnapshot.getBoolean("hasSecurityCamera") ?: false
-                val hasWeapon = documentSnapshot.getBoolean("hasWeapon") ?: false
-                val hasDangerousAnimal = documentSnapshot.getBoolean("hasDangerousAnimal") ?: false
-                val hasFirstAid = documentSnapshot.getBoolean("hasFirstAid") ?: false
-                val hasFireExit = documentSnapshot.getBoolean("hasFireExit") ?: false
-                val hasFireExtinguisher = documentSnapshot.getBoolean("hasFireExtinguisher") ?: false
-                val maxNoOfGuests = documentSnapshot.getLong("maxNoOfGuests")?.toInt() ?: 0
-                val additionalFeePerGuest = documentSnapshot.getDouble("additionalFeePerGuest") ?: 0.0
-                val noisePolicy = documentSnapshot.getBoolean("noisePolicy") ?: false
-                val allowSmoking = documentSnapshot.getBoolean("allowSmoking") ?: false
-                val allowPets = documentSnapshot.getBoolean("allowPets") ?: false
-                val additionalInfo = documentSnapshot.getString("additionalInfo") ?: ""
-                val noCancel = documentSnapshot.getBoolean("noCancel") ?: false
-                val noReschedule = documentSnapshot.getBoolean("noReschedule") ?: false
-                val phoneNo = documentSnapshot.getString("phoneNo") ?: ""
-                val email = documentSnapshot.getString("email") ?: ""
+//                val noOfGuests = documentSnapshot.getLong("noOfGuests")?.toInt() ?: 0
+//                val noOfBedrooms = documentSnapshot.getLong("noOfBedrooms")?.toInt() ?: 0
+//                val noOfBeds = documentSnapshot.getLong("noOfBeds")?.toInt() ?: 0
+//                val noOfBathrooms = documentSnapshot.getLong("noOfBathrooms")?.toInt() ?: 0
+//                val staycationDescription = documentSnapshot.getString("staycationDescription") ?: ""
+//                val staycationLocation = documentSnapshot.getString("staycationLocation") ?: ""
+//                val staycationLat = documentSnapshot.getDouble("staycationLat") ?: 0.0
+//                val staycationLng = documentSnapshot.getDouble("staycationLng") ?: 0.0
+//                val staycationPrice = documentSnapshot.getDouble("staycationPrice") ?: 0.0
+//                val staycationSpace = documentSnapshot.getString("staycationSpace") ?: ""
+//                val staycationType = documentSnapshot.getString("staycationType") ?: ""
+//                val hasSecurityCamera = documentSnapshot.getBoolean("hasSecurityCamera") ?: false
+//                val hasWeapon = documentSnapshot.getBoolean("hasWeapon") ?: false
+//                val hasDangerousAnimal = documentSnapshot.getBoolean("hasDangerousAnimal") ?: false
+//                val hasFirstAid = documentSnapshot.getBoolean("hasFirstAid") ?: false
+//                val hasFireExit = documentSnapshot.getBoolean("hasFireExit") ?: false
+//                val hasFireExtinguisher = documentSnapshot.getBoolean("hasFireExtinguisher") ?: false
+//                val maxNoOfGuests = documentSnapshot.getLong("maxNoOfGuests")?.toInt() ?: 0
+//                val additionalFeePerGuest = documentSnapshot.getDouble("additionalFeePerGuest") ?: 0.0
+//                val noisePolicy = documentSnapshot.getBoolean("noisePolicy") ?: false
+//                val allowSmoking = documentSnapshot.getBoolean("allowSmoking") ?: false
+//                val allowPets = documentSnapshot.getBoolean("allowPets") ?: false
+//                val additionalInfo = documentSnapshot.getString("additionalInfo") ?: ""
+//                val noCancel = documentSnapshot.getBoolean("noCancel") ?: false
+//                val noReschedule = documentSnapshot.getBoolean("noReschedule") ?: false
+//                val phoneNo = documentSnapshot.getString("phoneNo") ?: ""
+//                val email = documentSnapshot.getString("email") ?: ""
 
                 Staycation(
-                    additionalFeePerGuest = additionalFeePerGuest,
-                    additionalInfo = additionalInfo,
-                    allowPets = allowPets,
-                    allowSmoking = allowSmoking,
-                    email = email,
-                    hasDangerousAnimal = hasDangerousAnimal,
-                    hasFireExit = hasFireExit,
-                    hasFireExtinguisher = hasFireExtinguisher,
-                    hasFirstAid = hasFirstAid,
-                    hasSecurityCamera = hasSecurityCamera,
-                    hasWeapon = hasWeapon,
                     hostId = hostId,
-                    maxNoOfGuests = maxNoOfGuests,
-                    noCancel = noCancel,
-                    noOfBathrooms = noOfBathrooms,
-                    noOfBedrooms = noOfBedrooms,
-                    noOfBeds = noOfBeds,
-                    noOfGuests = noOfGuests,
-                    noReschedule = noReschedule,
-                    noisePolicy = noisePolicy,
-                    phoneNo = phoneNo,
-                    staycationDescription = staycationDescription,
-                    staycationLat = staycationLat,
-                    staycationLng = staycationLng,
-                    staycationLocation = staycationLocation,
-                    staycationPrice = staycationPrice,
-                    staycationSpace = staycationSpace,
                     staycationTitle = staycationTitle,
-                    staycationType = staycationType
+                    staycationId = documentId,
+//                    additionalFeePerGuest = additionalFeePerGuest,
+//                    additionalInfo = additionalInfo,
+//                    allowPets = allowPets,
+//                    allowSmoking = allowSmoking,
+//                    email = email,
+//                    hasDangerousAnimal = hasDangerousAnimal,
+//                    hasFireExit = hasFireExit,
+//                    hasFireExtinguisher = hasFireExtinguisher,
+//                    hasFirstAid = hasFirstAid,
+//                    hasSecurityCamera = hasSecurityCamera,
+//                    hasWeapon = hasWeapon,
+//                    maxNoOfGuests = maxNoOfGuests,
+//                    noCancel = noCancel,
+//                    noOfBathrooms = noOfBathrooms,
+//                    noOfBedrooms = noOfBedrooms,
+//                    noOfBeds = noOfBeds,
+//                    noOfGuests = noOfGuests,
+//                    noReschedule = noReschedule,
+//                    noisePolicy = noisePolicy,
+//                    phoneNo = phoneNo,
+//                    staycationDescription = staycationDescription,
+//                    staycationLat = staycationLat,
+//                    staycationLng = staycationLng,
+//                    staycationLocation = staycationLocation,
+//                    staycationPrice = staycationPrice,
+//                    staycationSpace = staycationSpace,
+//                    staycationType = staycationType
                 )
             } else {
                 Staycation()
@@ -527,7 +1008,8 @@ class AdminReports : ViewModel() {
 
 
 
-                val selectedFilter = _selectedReportFilter.value
+               // val selectedFilter = _selectedReportFilter.value
+                val selectedFilter = "All"
                 val currentYear = Calendar.getInstance().get(Calendar.YEAR)
                 val transactionType = when (selectedFilter) {
                     "All" -> "All time transaction"
