@@ -98,7 +98,10 @@ fun NavGraphBuilder.adminGraph(
             AdminTableScreen(
                 adminId = it.arguments?.getString("adminId") ?: "",
                 navController = navController,
-                adminTable = adminTables
+                adminTable = adminTables,
+                onNavToGeneratedReport = { reportType ->
+                    navigateToGeneratedReportScreen(navController, reportType)
+                }
             )
         }
 
@@ -124,6 +127,7 @@ fun NavGraphBuilder.adminGraph(
         ) {
             GeneratedReportScreen(
                 adminReports = adminReports,
+                adminTables = adminTables,
                 reportType = it.arguments?.getString("reportType") ?: "",
                 onNavToBack = {
                     onNavToBack(navController)

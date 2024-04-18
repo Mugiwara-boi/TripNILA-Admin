@@ -5,16 +5,18 @@ import androidx.lifecycle.ViewModel
 import com.example.tripnila_admin.data.Review
 import com.example.tripnila_admin.data.ServicePerformance
 import com.example.tripnila_admin.data.Staycation
-import com.example.tripnila_admin.data.StaycationBooking
 import com.example.tripnila_admin.data.Tour
-import com.example.tripnila_admin.data.TourBooking
 import com.example.tripnila_admin.data.Tourist
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
+import java.time.Month
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Date
 import java.util.Locale
@@ -41,6 +43,12 @@ class AdminTables : ViewModel() {
     private val _tourPerformanceMap = MutableStateFlow<List<Map<String, String>>>(emptyList())
     val tourPerformanceMap = _tourPerformanceMap.asStateFlow()
 
+    private val _staycationPerformanceMapForHTML = MutableStateFlow<List<Map<String, String>>>(emptyList())
+    val staycationPerformanceMapForHTML = _staycationPerformanceMapForHTML.asStateFlow()
+
+    private val _tourPerformanceMapForHTML = MutableStateFlow<List<Map<String, String>>>(emptyList())
+    val tourPerformanceMapForHTML = _tourPerformanceMapForHTML.asStateFlow()
+
     private val _isFetchingStaycationsPerformance = MutableStateFlow(false)
     val isFetchingStaycationsPerformance = _isFetchingStaycationsPerformance.asStateFlow()
 
@@ -53,23 +61,251 @@ class AdminTables : ViewModel() {
     private val _isTourPerformanceFetched = MutableStateFlow(false)
     val isTourPerformanceFetched = _isTourPerformanceFetched.asStateFlow()
 
+    private val _isGeneratingReport = MutableStateFlow(false)
+    val isGeneratingReport = _isGeneratingReport.asStateFlow()
+
+
     private val _selectedSort = MutableStateFlow("Highest Booking Count")
     val selectedSort = _selectedSort.asStateFlow()
 
-    private val _selectedMonthPerformance = MutableStateFlow(getCurrentMonthName())
+    private val _selectedMonthPerformance = MutableStateFlow("All")
     val selectedMonthPerformance = _selectedMonthPerformance.asStateFlow()
 
-    private val _selectedYearPerformance = MutableStateFlow(getCurrentYear())
+    private val _selectedYearPerformance = MutableStateFlow("All")
     val selectedYearPerformance = _selectedYearPerformance.asStateFlow()
+
+    // GENERATE REPORT
+
+    private val _selectedPeriod = MutableStateFlow("Monthly")
+    val selectedPeriod = _selectedPeriod.asStateFlow()
+
+    private val _selectedMonth = MutableStateFlow(getCurrentMonthName())
+    val selectedMonth =_selectedMonth.asStateFlow()
+
+    private val _selectedStartMonth = MutableStateFlow("January")
+    val selectedStartMonth =_selectedStartMonth.asStateFlow()
+
+    private val _selectedEndMonth = MutableStateFlow("June")
+    val selectedEndMonth =_selectedEndMonth.asStateFlow()
+
+    private val _selectedYear = MutableStateFlow(getCurrentYear())
+    val selectedYear =_selectedYear.asStateFlow()
+
+    private val _dateRange = MutableStateFlow(getDateRangeForMonth())
+    val dateRange = _dateRange.asStateFlow()
+
+    private val _isReportGenerated = MutableStateFlow(false)
+    val isReportGenerated = _isReportGenerated.asStateFlow()
+
+    fun resetReportGenerated() {
+        _isReportGenerated.value = false
+    }
+
+    fun setSelectedPeriod(period: String) {
+        _selectedPeriod.value = period
+        _dateRange.value = when(_selectedPeriod.value) {
+            "Monthly" -> getDateRangeForMonth()
+            "Bi-yearly" -> getDateRangeForMonths()
+            "Yearly" -> getDateRangeForYear()
+            else -> "Unregistered Report Type"
+        }
+
+        Log.d("Date Range", _dateRange.value)
+
+    }
+
+    fun setSelectedMonth(filter: String) {
+        _selectedMonth.value = filter
+
+    }
+
+    fun setSelectedYear(filter: String) {
+        _selectedYear.value = filter.toInt()
+
+    }
+
+
+    fun setSelectedMonthRange(index: Int) {
+        if (index == 0) {
+            _selectedStartMonth.value = "January"
+            _selectedEndMonth.value = "June"
+        } else {
+            _selectedStartMonth.value = "July"
+            _selectedEndMonth.value = "December"
+        }
+    }
+
+    private fun getDateRangeForMonth(): String {
+        val month = Month.values().find {
+            it.getDisplayName(TextStyle.FULL, Locale.getDefault()).equals(_selectedMonth.value, ignoreCase = true)
+        }
+        return if (month != null) {
+            val startDate = LocalDate.of(_selectedYear.value, month, 1)
+            val endDate = startDate.plusMonths(1).minusDays(1)
+            val formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy")
+            val startDateString = startDate.format(formatter)
+            val endDateString = endDate.format(formatter)
+            "$startDateString-$endDateString"
+        } else {
+            ""
+        }
+    }
+
+    private fun getDateRangeForMonths(): String {
+        val startMonth = Month.values().find {
+            it.getDisplayName(TextStyle.FULL, Locale.getDefault()).equals(_selectedStartMonth.value, ignoreCase = true)
+        }
+        val endMonth = Month.values().find {
+            it.getDisplayName(TextStyle.FULL, Locale.getDefault()).equals(_selectedEndMonth.value, ignoreCase = true)
+        }
+
+        return if (startMonth != null && endMonth != null) {
+            val startDate = LocalDate.of(_selectedYear.value, startMonth, 1)
+            val endDate = LocalDate.of(_selectedYear.value, endMonth, 1).plusMonths(1).minusDays(1)
+            val formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy")
+            val startDateString = startDate.format(formatter)
+            val endDateString = endDate.format(formatter)
+            "$startDateString-$endDateString"
+        } else {
+            ""
+        }
+    }
+
+    private fun getDateRangeForYear(): String {
+        val startDate = LocalDate.of(_selectedYear.value, 1, 1)
+        val endDate = LocalDate.of(_selectedYear.value, 12, 31)
+        val formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy")
+        val startDateString = startDate.format(formatter)
+        val endDateString = endDate.format(formatter)
+        return "$startDateString-$endDateString"
+    }
+
+    fun generateReport() {
+     //   _selectedYearPerformance.value = filter
+
+        _isGeneratingReport.value = true
+
+        val (startDate, endDate) = parseDateRange(_dateRange.value)
+
+        val tempTourPerformance = _toursPerformance.value.filter {
+            it.bookingDate in startDate..endDate
+        }
+
+        val tempStaycationPerformance = _staycationsPerformance.value.filter {
+            it.bookingDate in startDate..endDate
+        }
+
+        groupPerformanceById(tempTourPerformance, "Tour")
+        groupPerformanceById(tempStaycationPerformance, "Staycation")
+
+        _isGeneratingReport.value = false
+        _isReportGenerated.value = true
+
+    }
+
+
 
     fun setSelectedMonthPerformance(filter: String) {
         _selectedMonthPerformance.value = filter
+
+        val (startDate, endDate) = parseDateRange(getDateRange())
+
+        val tempTourPerformance = _toursPerformance.value.filter {
+            it.bookingDate in startDate..endDate
+        }
+
+        val tempStaycationPerformance = _staycationsPerformance.value.filter {
+            it.bookingDate in startDate..endDate
+        }
+
+        groupPerformanceById(tempTourPerformance, "Tour")
+        groupPerformanceById(tempStaycationPerformance, "Staycation")
+
     }
 
 
     fun setSelectedYearPerformance(filter: String) {
-        _selectedYearPerformance.value = filter.toInt()
+        _selectedYearPerformance.value = filter
 
+        val (startDate, endDate) = parseDateRange(getDateRange())
+
+        val tempTourPerformance = _toursPerformance.value.filter {
+            it.bookingDate in startDate..endDate
+        }
+
+        val tempStaycationPerformance = _staycationsPerformance.value.filter {
+            it.bookingDate in startDate..endDate
+        }
+
+        groupPerformanceById(tempTourPerformance, "Tour")
+        groupPerformanceById(tempStaycationPerformance, "Staycation")
+
+    }
+
+    private fun getDateRange(): String {
+
+        val monthStartName = if (_selectedMonthPerformance.value == "All") "January" else _selectedMonthPerformance.value
+        val monthEndName = if (_selectedMonthPerformance.value == "All") "December" else _selectedMonthPerformance.value
+
+        val monthStart = Month.values().find { it.getDisplayName(TextStyle.FULL, Locale.getDefault()).equals(monthStartName, ignoreCase = true) }
+        val monthEnd = Month.values().find { it.getDisplayName(TextStyle.FULL, Locale.getDefault()).equals(monthEndName, ignoreCase = true) }
+
+        val yearStart = if (_selectedYearPerformance.value == "All") 2023 else _selectedYearPerformance.value.toInt()
+        val yearEnd = if (_selectedYearPerformance.value == "All") getCurrentYear() else _selectedYearPerformance.value.toInt()
+
+        return if (monthStart != null) {
+            val startDate = LocalDate.of(yearStart, monthStart, 1)
+            val endDate =
+                if (_selectedYearPerformance.value == "All") LocalDate.of(yearEnd, getCurrentMonth(), getCurrentDay())
+                else if (_selectedMonthPerformance.value == "All") LocalDate.of(yearEnd, monthEnd, 31)
+                else startDate.plusMonths(1).minusDays(1)
+
+            val formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy")
+            val startDateString = startDate.format(formatter)
+            val endDateString = endDate.format(formatter)
+
+            Log.d("Start-End", "$startDateString-$endDateString")
+
+            "$startDateString-$endDateString"
+        } else {
+            ""
+        }
+    }
+
+//    private fun getDateRangeForYear(): String {
+//
+//        val year = if (_selectedYearPerformance.value == "All") 2023 else _selectedYearPerformance.value.toInt()
+//
+//        val startDate = LocalDate.of(year, 1, 1)
+//        val endDate = LocalDate.of(year, 12, 31)
+//        val formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy")
+//        val startDateString = startDate.format(formatter)
+//        val endDateString = endDate.format(formatter)
+//        return "$startDateString-$endDateString"
+//    }
+
+    private fun parseDateRange(dateRange: String): Pair<Date, Date> {
+        val dateRangeParts = dateRange.split("-")
+        val startDateString = dateRangeParts.firstOrNull()
+        val endDateString = dateRangeParts.lastOrNull()
+
+        val startDate = LocalDate.parse(startDateString, DateTimeFormatter.ofPattern("MM/dd/yyyy"))
+        val endDate = LocalDate.parse(endDateString, DateTimeFormatter.ofPattern("MM/dd/yyyy"))
+
+        val startTimestamp =
+            Timestamp(startDate.atStartOfDay().toEpochSecond(ZoneOffset.ofHours(8)), 0)
+        val endTimestamp =
+            Timestamp(endDate.atTime(23, 59, 59).toEpochSecond(ZoneOffset.ofHours(8)), 0)
+
+        return Pair(startTimestamp.toDate(), endTimestamp.toDate())
+    }
+
+    private fun getCurrentYear(): Int {
+        return LocalDate.now().year
+    }
+
+    private fun getCurrentMonth(): Int {
+        return LocalDate.now().monthValue
     }
 
     private fun getCurrentMonthName(): String {
@@ -77,9 +313,10 @@ class AdminTables : ViewModel() {
         return currentMonth.getDisplayName(TextStyle.FULL, Locale.getDefault())
     }
 
-    private fun getCurrentYear(): Int {
-        return LocalDate.now().year
+    private fun getCurrentDay(): Int {
+        return LocalDate.now().dayOfMonth
     }
+
 
     fun setSortBy(sort: String) {
 
@@ -90,72 +327,132 @@ class AdminTables : ViewModel() {
                     _staycationPerformanceMap.value.sortedByDescending { it["totalBookings"].toString().toInt() }
                 _tourPerformanceMap.value =
                     _tourPerformanceMap.value.sortedByDescending { it["totalBookings"].toString().toInt() }
+
+                _staycationPerformanceMapForHTML.value =
+                    _staycationPerformanceMapForHTML.value.sortedByDescending { it["totalBookings"].toString().toInt() }
+                _tourPerformanceMapForHTML.value =
+                    _tourPerformanceMapForHTML.value.sortedByDescending { it["totalBookings"].toString().toInt() }
             }
             "Lowest Booking Count" -> {
                 _staycationPerformanceMap.value =
                     _staycationPerformanceMap.value.sortedBy { it["totalBookings"].toString().toInt() }
                 _tourPerformanceMap.value =
                     _tourPerformanceMap.value.sortedBy { it["totalBookings"].toString().toInt() }
+
+                _staycationPerformanceMapForHTML.value =
+                    _staycationPerformanceMapForHTML.value.sortedBy { it["totalBookings"].toString().toInt() }
+                _tourPerformanceMapForHTML.value =
+                    _tourPerformanceMapForHTML.value.sortedBy { it["totalBookings"].toString().toInt() }
             }
             "Highest Completed Bookings" -> {
                 _staycationPerformanceMap.value =
                     _staycationPerformanceMap.value.sortedByDescending { it["completedBookings"].toString().toInt() }
                 _tourPerformanceMap.value =
                     _tourPerformanceMap.value.sortedByDescending { it["completedBookings"].toString().toInt() }
+
+                _staycationPerformanceMapForHTML.value =
+                    _staycationPerformanceMapForHTML.value.sortedByDescending { it["completedBookings"].toString().toInt() }
+                _tourPerformanceMapForHTML.value =
+                    _tourPerformanceMapForHTML.value.sortedByDescending { it["completedBookings"].toString().toInt() }
             }
             "Lowest Completed Bookings" -> {
                 _staycationPerformanceMap.value =
                     _staycationPerformanceMap.value.sortedBy { it["completedBookings"].toString().toInt() }
                 _tourPerformanceMap.value =
                     _tourPerformanceMap.value.sortedBy { it["completedBookings"].toString().toInt() }
+
+                _staycationPerformanceMapForHTML.value =
+                    _staycationPerformanceMapForHTML.value.sortedBy { it["completedBookings"].toString().toInt() }
+                _tourPerformanceMapForHTML.value =
+                    _tourPerformanceMapForHTML.value.sortedBy { it["completedBookings"].toString().toInt() }
             }
             "Highest Cancelled Bookings" -> {
                 _staycationPerformanceMap.value =
                     _staycationPerformanceMap.value.sortedByDescending { it["cancelledBookings"].toString().toInt() }
                 _tourPerformanceMap.value =
                     _tourPerformanceMap.value.sortedByDescending { it["cancelledBookings"].toString().toInt() }
+
+                _staycationPerformanceMapForHTML.value =
+                    _staycationPerformanceMapForHTML.value.sortedByDescending { it["cancelledBookings"].toString().toInt() }
+                _tourPerformanceMapForHTML.value =
+                    _tourPerformanceMapForHTML.value.sortedByDescending { it["cancelledBookings"].toString().toInt() }
             }
             "Lowest Cancelled Bookings" -> {
                 _staycationPerformanceMap.value =
                     _staycationPerformanceMap.value.sortedBy { it["cancelledBookings"].toString().toInt() }
                 _tourPerformanceMap.value =
                     _tourPerformanceMap.value.sortedBy { it["cancelledBookings"].toString().toInt() }
+
+                _staycationPerformanceMapForHTML.value =
+                    _staycationPerformanceMapForHTML.value.sortedBy { it["cancelledBookings"].toString().toInt() }
+                _tourPerformanceMapForHTML.value =
+                    _tourPerformanceMapForHTML.value.sortedBy { it["cancelledBookings"].toString().toInt() }
             }
             "Highest Pending Bookings" -> {
                 _staycationPerformanceMap.value =
                     _staycationPerformanceMap.value.sortedByDescending { it["pendingBookings"].toString().toInt() }
                 _tourPerformanceMap.value =
                     _tourPerformanceMap.value.sortedByDescending { it["pendingBookings"].toString().toInt() }
+
+                _staycationPerformanceMapForHTML.value =
+                    _staycationPerformanceMapForHTML.value.sortedByDescending { it["pendingBookings"].toString().toInt() }
+                _tourPerformanceMapForHTML.value =
+                    _tourPerformanceMapForHTML.value.sortedByDescending { it["pendingBookings"].toString().toInt() }
             }
             "Lowest Pending Bookings" -> {
                 _staycationPerformanceMap.value =
                     _staycationPerformanceMap.value.sortedBy { it["pendingBookings"].toString().toInt() }
                 _tourPerformanceMap.value =
                     _tourPerformanceMap.value.sortedBy { it["pendingBookings"].toString().toInt() }
+
+                _staycationPerformanceMapForHTML.value =
+                    _staycationPerformanceMapForHTML.value.sortedBy { it["pendingBookings"].toString().toInt() }
+                _tourPerformanceMapForHTML.value =
+                    _tourPerformanceMapForHTML.value.sortedBy { it["pendingBookings"].toString().toInt() }
             }
             "Highest Views" -> {
                 _staycationPerformanceMap.value =
                     _staycationPerformanceMap.value.sortedByDescending { it["views"].toString().toInt() }
                 _tourPerformanceMap.value =
                     _tourPerformanceMap.value.sortedByDescending { it["views"].toString().toInt() }
+
+                _staycationPerformanceMapForHTML.value =
+                    _staycationPerformanceMapForHTML.value.sortedByDescending { it["views"].toString().toInt() }
+                _tourPerformanceMapForHTML.value =
+                    _tourPerformanceMapForHTML.value.sortedByDescending { it["views"].toString().toInt() }
             }
             "Lowest Views" -> {
                 _staycationPerformanceMap.value =
                     _staycationPerformanceMap.value.sortedBy { it["views"].toString().toInt() }
                 _tourPerformanceMap.value =
                     _tourPerformanceMap.value.sortedBy { it["views"].toString().toInt() }
+
+                _staycationPerformanceMapForHTML.value =
+                    _staycationPerformanceMapForHTML.value.sortedBy { it["views"].toString().toInt() }
+                _tourPerformanceMapForHTML.value =
+                    _tourPerformanceMapForHTML.value.sortedBy { it["views"].toString().toInt() }
             }
             "Highest Rating" -> {
                 _staycationPerformanceMap.value =
                     _staycationPerformanceMap.value.sortedByDescending { it["averageRating"].toString().toDouble() }
                 _tourPerformanceMap.value =
                     _tourPerformanceMap.value.sortedByDescending { it["averageRating"].toString().toDouble() }
+
+                _staycationPerformanceMapForHTML.value =
+                    _staycationPerformanceMapForHTML.value.sortedByDescending { it["averageRating"].toString().toDouble() }
+                _tourPerformanceMapForHTML.value =
+                    _tourPerformanceMapForHTML.value.sortedByDescending { it["averageRating"].toString().toDouble() }
             }
             "Lowest Rating" -> {
                 _staycationPerformanceMap.value =
                     _staycationPerformanceMap.value.sortedBy { it["averageRating"].toString().toDouble() }
                 _tourPerformanceMap.value =
                     _tourPerformanceMap.value.sortedBy { it["averageRating"].toString().toDouble() }
+
+                _staycationPerformanceMapForHTML.value =
+                    _staycationPerformanceMapForHTML.value.sortedBy { it["averageRating"].toString().toDouble() }
+                _tourPerformanceMapForHTML.value =
+                    _tourPerformanceMapForHTML.value.sortedBy { it["averageRating"].toString().toDouble() }
             }
         }
     }
@@ -164,13 +461,13 @@ class AdminTables : ViewModel() {
 
         _isFetchingStaycationsPerformance.value = true
 
-       // val (startTimestamp, endTimestamp) = parseDateRange()
+        // val (startTimestamp, endTimestamp) = parseDateRange()
 
         val servicePerformanceList = mutableListOf<ServicePerformance>()
 
         try {
             val query = db.collection(staycationBookingsCollection)
-                    .orderBy("bookingDate", Query.Direction.ASCENDING)
+                .orderBy("bookingDate", Query.Direction.ASCENDING)
 
             val querySnapshot = query.get().await()
 
@@ -193,12 +490,6 @@ class AdminTables : ViewModel() {
                     views = views,
                     rating = review?.reviewRating ?: 0,
                     bookingDate = bookingDate
-//                    totalBookings = totalBookings++ ,
-//                    completedBookings = if (bookingStatus == "Completed") completedBookings++ else completedBookings,
-//                    pendingBookings = if (bookingStatus == "Pending" || bookingStatus == "Ongoing" ) pendingBookings++ else pendingBookings,
-//                    cancelledBookings = if (bookingStatus == "Cancelled") cancelledBookings++ else cancelledBookings,
-//                    views,
-//                    averageRating
                 )
 
 
@@ -208,7 +499,7 @@ class AdminTables : ViewModel() {
             _staycationsPerformance.value = servicePerformanceList
             groupPerformanceById(servicePerformanceList, "Staycation")
             Log.d("Staycation Performance", servicePerformanceList.toString())
-        //    generateMapFromTourBookingReports()
+            //    generateMapFromTourBookingReports()
 
         } catch (e: Exception) {
             Log.e("Staycation", "Error fetching staycation performance: ${e.message}")
@@ -256,6 +547,8 @@ class AdminTables : ViewModel() {
                 )
 
                 servicePerformanceList.add(tourPerformance)
+
+                Log.d("Date", bookingDate.toString())
             }
 
             _toursPerformance.value = servicePerformanceList
@@ -307,17 +600,21 @@ class AdminTables : ViewModel() {
             )
         }
 
-        val sortedListOfMap = listOfMap.sortedByDescending { it["totalBookings"].toString().toInt() }
+      //  val sortedListOfMap = listOfMap.sortedByDescending { it["totalBookings"].toString().toInt() }
 
-        sortedListOfMap.forEach { map ->
+        listOfMap.forEach { map ->
             Log.d("$serviceType Performance Map", map.toString())
         }
 
         if (serviceType == "Staycation") {
-            _staycationPerformanceMap.value = sortedListOfMap
+            _staycationPerformanceMap.value = listOfMap
+            _staycationPerformanceMapForHTML.value = listOfMap
         } else {
-            _tourPerformanceMap.value = sortedListOfMap
+            _tourPerformanceMap.value = listOfMap
+            _tourPerformanceMapForHTML.value = listOfMap
         }
+
+        setSortBy(_selectedSort.value)
 
     }
 
