@@ -13,9 +13,11 @@ import androidx.navigation.navigation
 import com.example.tripnila_admin.screens.AdminDashboardScreen
 import com.example.tripnila_admin.screens.AdminProfileScreen
 import com.example.tripnila_admin.screens.AdminReportsScreen
+import com.example.tripnila_admin.screens.AdminTableScreen
 import com.example.tripnila_admin.screens.GeneratedReportScreen
 import com.example.tripnila_admin.viewmodels.AdminDashboard
 import com.example.tripnila_admin.viewmodels.AdminReports
+import com.example.tripnila_admin.viewmodels.AdminTables
 
 enum class LoginRoutes {
 
@@ -25,6 +27,7 @@ enum class AdminRoutes {
     Dashboard,
     Reports,
     Profile,
+    Tables,
     GeneratedReport
 }
 
@@ -35,11 +38,12 @@ enum class NestedRoutes {
 @Composable
 fun Navigation(
     navController: NavHostController = rememberNavController(),
-    adminReports: AdminReports
+    adminReports: AdminReports,
+    adminTables: AdminTables
 ) {
     NavHost(navController = navController, startDestination = NestedRoutes.Admin.name) {
         adminGraph(
-            navController = navController, adminReports
+            navController = navController, adminReports = adminReports, adminTables = adminTables
         )
     }
 }
@@ -47,7 +51,8 @@ fun Navigation(
 
 fun NavGraphBuilder.adminGraph(
     navController: NavHostController,
-    adminReports: AdminReports
+    adminReports: AdminReports,
+    adminTables: AdminTables
 ) {
     navigation(
         startDestination = AdminRoutes.Dashboard.name,
@@ -82,6 +87,21 @@ fun NavGraphBuilder.adminGraph(
                 }
             )
         }
+
+        composable(
+            route = AdminRoutes.Tables.name,
+            arguments = listOf(navArgument("adminId") {
+                type = NavType.StringType
+                defaultValue = ""
+            })
+        ) {
+            AdminTableScreen(
+                adminId = it.arguments?.getString("adminId") ?: "",
+                navController = navController,
+                adminTable = adminTables
+            )
+        }
+
         composable(
             route = AdminRoutes.Profile.name,
             arguments = listOf(navArgument("adminId") {
@@ -94,6 +114,7 @@ fun NavGraphBuilder.adminGraph(
                 navController = navController
             )
         }
+
         composable(
             route = AdminRoutes.GeneratedReport.name + "/{reportType}",
             arguments = listOf(navArgument("reportType") {
@@ -113,9 +134,7 @@ fun NavGraphBuilder.adminGraph(
 }
 
 private fun onNavToBack(navController: NavHostController) {
-    navController.navigate(AdminRoutes.Reports.name) {
-        launchSingleTop = true
-    }
+    navController.popBackStack()
 }
 
 private fun navigateToGeneratedReportScreen(navController: NavHostController, reportType: String) {

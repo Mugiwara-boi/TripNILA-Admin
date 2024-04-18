@@ -13,6 +13,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.tripnila_admin.ui.theme.TripNILAAdminTheme
 import com.example.tripnila_admin.viewmodels.AdminReports
+import com.example.tripnila_admin.viewmodels.AdminTables
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,7 +22,8 @@ class MainActivity : ComponentActivity() {
             TripNILAAdminTheme {
 
                 Navigation(
-                    adminReports = viewModel(modelClass = AdminReports::class.java)
+                    adminReports = viewModel(modelClass = AdminReports::class.java),
+                    adminTables = viewModel(modelClass = AdminTables::class.java)
                 )
 
             }

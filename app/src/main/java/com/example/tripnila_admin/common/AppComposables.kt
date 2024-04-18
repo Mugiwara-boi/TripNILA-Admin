@@ -479,6 +479,12 @@ fun AdminBottomNavigationBar(
             hasNews = false
         ),
         BottomNavigationItem(
+            title = "Tables",
+            selectedIcon = R.drawable.table_filled,
+            unselectedIcon = R.drawable.table_outlined,
+            hasNews = false
+        ),
+        BottomNavigationItem(
             title = "Profile",
             selectedIcon = R.drawable.account_filled,
             unselectedIcon = R.drawable.account_outlined,
@@ -502,7 +508,8 @@ fun AdminBottomNavigationBar(
                     val route = when (index) {
                         0 -> "Dashboard"
                         1 -> "Reports"
-                        2 -> "Profile"
+                        2 -> "Tables"
+                        3 -> "Profile"
                         else -> "Dashboard"
                     }
                                     //"$route/$adminId"

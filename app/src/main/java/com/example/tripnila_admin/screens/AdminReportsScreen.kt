@@ -202,6 +202,7 @@ fun AdminReportsScreen(
         if (isStaycationBookingsFetched && isTourBookingsFetched) {
             onNavToGeneratedReport("salesReport")
             showDialog = false
+            adminReports.resetFetchStatus()
         }
     }
 

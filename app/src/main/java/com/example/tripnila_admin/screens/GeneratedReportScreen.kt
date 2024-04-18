@@ -113,8 +113,6 @@ fun GeneratedReportScreen(
 //        else -> "Unregistered Report Type"
 //    }
 
-
-
     Surface(
         modifier = Modifier
             .fillMaxSize()
