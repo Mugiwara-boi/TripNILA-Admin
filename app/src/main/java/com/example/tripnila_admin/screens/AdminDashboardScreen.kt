@@ -504,31 +504,31 @@ fun ProfitCard(
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
                 )
-                Icon(
-                    imageVector = ImageVector.vectorResource(id = R.drawable.recent_clock),
-                    contentDescription = null,
-                    tint = Color(0xff999999),
-                    modifier = Modifier.padding(horizontal = 3.dp)
-                )
-                Text(
-                    text = "Updated: $lastUpdateTime",
-                    color = Color(0xff999999),
-                    fontSize = 8.sp,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.weight(1f)
-                )
-                IconButton(
-                    onClick = { /*TODO*/ },
-                    modifier = Modifier
-                        .size(23.dp)
-                        .offset(x = 7.dp, y = (-4).dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.TwoTone.KeyboardArrowRight,
-                        contentDescription = null,
-                        modifier = Modifier.size(23.dp)
-                    )
-                }
+//                Icon(
+//                    imageVector = ImageVector.vectorResource(id = R.drawable.recent_clock),
+//                    contentDescription = null,
+//                    tint = Color(0xff999999),
+//                    modifier = Modifier.padding(horizontal = 3.dp)
+//                )
+//                Text(
+//                    text = "Updated: $lastUpdateTime",
+//                    color = Color(0xff999999),
+//                    fontSize = 8.sp,
+//                    fontWeight = FontWeight.Medium,
+//                    modifier = Modifier.weight(1f)
+//                )
+//                IconButton(
+//                    onClick = { /*TODO*/ },
+//                    modifier = Modifier
+//                        .size(23.dp)
+//                        .offset(x = 7.dp, y = (-4).dp)
+//                ) {
+//                    Icon(
+//                        imageVector = Icons.TwoTone.KeyboardArrowRight,
+//                        contentDescription = null,
+//                        modifier = Modifier.size(23.dp)
+//                    )
+//                }
             }
 
             Row(
@@ -612,31 +612,31 @@ fun RevenueCard(
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
                 )
-                Icon(
-                    imageVector = ImageVector.vectorResource(id = R.drawable.recent_clock),
-                    contentDescription = null,
-                    tint = Color(0xff999999),
-                    modifier = Modifier.padding(horizontal = 3.dp)
-                )
-                Text(
-                    text = "Updated: $lastUpdateTime",
-                    color = Color(0xff999999),
-                    fontSize = 8.sp,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.weight(1f)
-                )
-                IconButton(
-                    onClick = { /*TODO*/ },
-                    modifier = Modifier
-                        .size(23.dp)
-                        .offset(x = 7.dp, y = (-4).dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.TwoTone.KeyboardArrowRight,
-                        contentDescription = null,
-                        modifier = Modifier.size(23.dp)
-                    )
-                }
+//                Icon(
+//                    imageVector = ImageVector.vectorResource(id = R.drawable.recent_clock),
+//                    contentDescription = null,
+//                    tint = Color(0xff999999),
+//                    modifier = Modifier.padding(horizontal = 3.dp)
+//                )
+//                Text(
+//                    text = "Updated: $lastUpdateTime",
+//                    color = Color(0xff999999),
+//                    fontSize = 8.sp,
+//                    fontWeight = FontWeight.Medium,
+//                    modifier = Modifier.weight(1f)
+//                )
+//                IconButton(
+//                    onClick = { /*TODO*/ },
+//                    modifier = Modifier
+//                        .size(23.dp)
+//                        .offset(x = 7.dp, y = (-4).dp)
+//                ) {
+//                    Icon(
+//                        imageVector = Icons.TwoTone.KeyboardArrowRight,
+//                        contentDescription = null,
+//                        modifier = Modifier.size(23.dp)
+//                    )
+//                }
             }
 
             Row(
@@ -739,19 +739,19 @@ fun VerifiedUsersCard(
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
                 )
-                Icon(
-                    imageVector = ImageVector.vectorResource(id = R.drawable.recent_clock),
-                    contentDescription = null,
-                    tint = Color(0xff999999),
-                    modifier = Modifier.padding(horizontal = 3.dp)
-                )
-                Text(
-                    text = "Updated: $lastUpdateTime",
-                    color = Color(0xff999999),
-                    fontSize = 8.sp,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.weight(1f)
-                )
+//                Icon(
+//                    imageVector = ImageVector.vectorResource(id = R.drawable.recent_clock),
+//                    contentDescription = null,
+//                    tint = Color(0xff999999),
+//                    modifier = Modifier.padding(horizontal = 3.dp)
+//                )
+//                Text(
+//                    text = "Updated: $lastUpdateTime",
+//                    color = Color(0xff999999),
+//                    fontSize = 8.sp,
+//                    fontWeight = FontWeight.Medium,
+//                    modifier = Modifier.weight(1f)
+//                )
                 //UNCOMMENT KUNG KAILANGAN YUNG BUTTON
 //                IconButton(
 //                    onClick = { /*TODO*/ },

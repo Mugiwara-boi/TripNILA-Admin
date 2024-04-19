@@ -302,6 +302,11 @@ class AdminReports : ViewModel() {
 
     }
 
+    fun resetFetchStatus() {
+        _isStaycationBookingsFetched.value = false
+        _isTourBookingsFetched.value = false
+    }
+
     fun setSelectedMonthRange(index: Int) {
         if (index == 0) {
             _selectedStartMonth.value = "January"

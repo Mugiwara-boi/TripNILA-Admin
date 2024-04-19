@@ -32,6 +32,7 @@ import com.example.tripnila_admin.common.AppFilledButton
 import com.example.tripnila_admin.common.AppTopBar
 import com.example.tripnila_admin.common.LoadingScreen
 import com.example.tripnila_admin.viewmodels.AdminReports
+import com.example.tripnila_admin.viewmodels.AdminTables
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -40,7 +41,7 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GeneratedReportScreen(
-    adminReports: AdminReports,
+    adminTables: AdminTables,
     reportType: String,
     onNavToBack: () -> Unit
 ) {
@@ -53,8 +54,6 @@ fun GeneratedReportScreen(
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(state = rememberTopAppBarState())
 
-    val staycationData by adminReports.staycationDataMap.collectAsState()
-    val tourData by adminReports.tourDataMap.collectAsState()
 
 //    val staycationData = listOf(
 //        mapOf("column1" to "", "column2" to "Data 2", "column3" to "Data 3", "column4" to "Data 2", "column5" to "Data 2", "column6" to "Data 2", "column7" to "Data 5"),
@@ -63,30 +62,73 @@ fun GeneratedReportScreen(
 //    )
 
 
-  //  val tourData = emptyList<Map<String,String>>()
+    //  val tourData = emptyList<Map<String,String>>()
 //    val tourData = listOf(
 //        mapOf("column1" to "Data 1", "column2" to "Data 2", "column3" to "Data 3", "column4" to "Data 2", "column5" to "Data 2", "column6" to "Data 2", "column7" to "Data 5"),
 //        mapOf("column1" to "Data 4", "column2" to "Data 5", "column3" to "Data 6", "column4" to "Data 2", "column5" to "Data 2", "column6" to "Data 2", "column7" to "Data 2"),
 //        mapOf("column1" to "Data 7", "column2" to "Data 8", "column3" to "Data 9", "column4" to "Data 2", "column5" to "Data 2", "column6" to "Data 2", "column7" to "Data 2")
 //    )
 
-    val period by adminReports.selectedPeriod.collectAsState()
-    val month by adminReports.selectedMonth.collectAsState()
-    val year by adminReports.selectedYear.collectAsState()
-    val startMonth by adminReports.selectedStartMonth.collectAsState()
-    val endMonth by adminReports.selectedEndMonth.collectAsState()
-    val dateRange by adminReports.dateRange.collectAsState()
+//                      SALES REPORTS
+//  -----------------------------------------------------------------------------------------------
 
-    val staycationTotalCollectedCommission by adminReports.staycationTotalCollectedCommission.collectAsState()
-    val staycationTotalPendingCommission by adminReports.staycationTotalPendingCommission.collectAsState()
-    val staycationTotalGrossSale by adminReports.staycationTotalGrossSale.collectAsState()
+//    val staycationData by adminReports.staycationDataMap.collectAsState()
+//    val tourData by adminReports.tourDataMap.collectAsState()
 
-    val tourTotalCollectedCommission by adminReports.tourTotalCollectedCommission.collectAsState()
-    val tourTotalPendingCommission by adminReports.tourTotalPendingCommission.collectAsState()
-    val tourTotalGrossSale by adminReports.tourTotalGrossSale.collectAsState()
+//    val period by adminReports.selectedPeriod.collectAsState()
+//    val month by adminReports.selectedMonth.collectAsState()
+//    val year by adminReports.selectedYear.collectAsState()
+//    val startMonth by adminReports.selectedStartMonth.collectAsState()
+//    val endMonth by adminReports.selectedEndMonth.collectAsState()
+//    val dateRange by adminReports.dateRange.collectAsState()
+
+//    val staycationTotalCollectedCommission by adminReports.staycationTotalCollectedCommission.collectAsState()
+//    val staycationTotalPendingCommission by adminReports.staycationTotalPendingCommission.collectAsState()
+//    val staycationTotalGrossSale by adminReports.staycationTotalGrossSale.collectAsState()
+//
+//    val tourTotalCollectedCommission by adminReports.tourTotalCollectedCommission.collectAsState()
+//    val tourTotalPendingCommission by adminReports.tourTotalPendingCommission.collectAsState()
+//    val tourTotalGrossSale by adminReports.tourTotalGrossSale.collectAsState()
+
+
+//    val totalGrossSales = "₱ %.2f".format(staycationTotalGrossSale.plus(tourTotalGrossSale))
+//    val totalCollectedCommission = "₱ %.2f".format(staycationTotalCollectedCommission.plus(tourTotalCollectedCommission))
+//    val totalPendingCommission = "₱ %.2f".format(staycationTotalPendingCommission.plus(tourTotalPendingCommission))
+
+//  -----------------------------------------------------------------------------------------------
+
+    val staycationData by if (reportType == "salesReport") adminTables.staycationsSalesMapForHTML.collectAsState() else adminTables.staycationPerformanceMapForHTML.collectAsState()
+    val tourData by if (reportType == "salesReport") adminTables.tourSalesMapForHTML.collectAsState() else adminTables.tourPerformanceMapForHTML.collectAsState()
+
+
+    val sortedBy by if (reportType == "salesReport") adminTables.selectedSalesSort.collectAsState() else adminTables.selectedSort.collectAsState()
+
+    val period by adminTables.selectedPeriod.collectAsState()
+    val month by adminTables.selectedMonth.collectAsState()
+    val year by adminTables.selectedYear.collectAsState()
+    val startMonth by adminTables.selectedStartMonth.collectAsState()
+    val endMonth by adminTables.selectedEndMonth.collectAsState()
+    val dateRange by adminTables.dateRange.collectAsState()
+
+    val staycationTotalCollectedCommission by adminTables.staycationTotalCollectedCommission.collectAsState()
+    val staycationTotalPendingCommission by adminTables.staycationTotalPendingCommission.collectAsState()
+    val staycationTotalGrossSale by adminTables.staycationTotalGrossSale.collectAsState()
+
+    val tourTotalCollectedCommission by adminTables.tourTotalCollectedCommission.collectAsState()
+    val tourTotalPendingCommission by adminTables.tourTotalPendingCommission.collectAsState()
+    val tourTotalGrossSale by adminTables.tourTotalGrossSale.collectAsState()
+
+
+
+    val totalGrossSales = "₱ ${staycationTotalGrossSale.plus(tourTotalGrossSale)}"
+    val totalCollectedCommission = "₱ ${staycationTotalCollectedCommission.plus(tourTotalCollectedCommission)}"
+    val totalPendingCommission = "₱ ${staycationTotalPendingCommission.plus(tourTotalPendingCommission)}"
+
+
 
     val reportHeader = when(reportType) {
         "salesReport" -> "$period Sales Report"
+        "performanceReport" -> "$period Performance Report"
         else -> {"Unregistered Report Type"}
     }
 
@@ -97,13 +139,18 @@ fun GeneratedReportScreen(
         else -> "Unknown Error"
     }
 
-    val totalGrossSales = "₱ %.2f".format(staycationTotalGrossSale.plus(tourTotalGrossSale))
-    val totalCollectedCommission = "₱ %.2f".format(staycationTotalCollectedCommission.plus(tourTotalCollectedCommission))
-    val totalPendingCommission = "₱ %.2f".format(staycationTotalPendingCommission.plus(tourTotalPendingCommission))
+    val htmlString =
+        if (reportType == "salesReport") getHtmlContentForSalesReport(
+            staycationData, tourData, reportHeader, sortedBy, dateHeader, dateRange,
+            totalGrossSales, totalCollectedCommission, totalPendingCommission
+        )
+        else getHtmlContentForPerformanceReport(
+            staycationData, tourData, reportHeader, sortedBy, dateHeader, dateRange
+        )
 
-//    val totalGrossSales = "₱ ${staycationTotalGrossSale.plus(tourTotalGrossSale)}"
-//    val totalCollectedCommission = "₱ ${staycationTotalCollectedCommission.plus(tourTotalCollectedCommission)}"
-//    val totalPendingCommission = "₱ ${staycationTotalPendingCommission.plus(tourTotalPendingCommission)}"
+
+
+
 
 
 //    val dateRange = when(period) {
@@ -112,8 +159,6 @@ fun GeneratedReportScreen(
 //        "Yearly" -> adminReports.getDateRangeForYear()
 //        else -> "Unregistered Report Type"
 //    }
-
-
 
     Surface(
         modifier = Modifier
@@ -162,12 +207,12 @@ fun GeneratedReportScreen(
                                 webViewClient = WebViewClient()
                                 settings.javaScriptEnabled = true
                                 loadDataWithBaseURL(null,
-                                    getHtmlContent(staycationData, tourData, reportHeader,
-                                        dateHeader, dateRange, totalGrossSales, totalCollectedCommission,
-                                        totalPendingCommission
-                                    ),
-//                                    getHtmlContent(staycationData, tourData, reportHeader,
-//                                        dateHeader, dateRange),
+//                                    getHtmlContentForSalesReport(staycationData, tourData, reportHeader,
+//                                        dateHeader, dateRange, totalGrossSales, totalCollectedCommission,
+//                                        totalPendingCommission
+//                                    ),
+   //                                 getHtmlContentForPerformanceReport(staycationData, tourData, reportHeader, sortedBy, dateHeader, dateRange),
+                                    htmlString,
                                     "text/html",
                                     "UTF-8",
                                     null)
@@ -178,10 +223,11 @@ fun GeneratedReportScreen(
                     view.webViewClient = WebViewClient()
                     view.settings.javaScriptEnabled = true
                     view.loadDataWithBaseURL(null,
-                        getHtmlContent(staycationData, tourData, reportHeader,
-                            dateHeader, dateRange, totalGrossSales, totalCollectedCommission,
-                            totalPendingCommission
-                        ),
+//                        getHtmlContentForSalesReport(staycationData, tourData, reportHeader,
+//                            dateHeader, dateRange, totalGrossSales, totalCollectedCommission,
+//                            totalPendingCommission
+//                        ),
+                        htmlString,
                         "text/html",
                         "UTF-8",
                         null)
@@ -189,15 +235,219 @@ fun GeneratedReportScreen(
 
             }
         }
-
-
     }
 }
 
-private fun getHtmlContent(
+private fun getHtmlContentForPerformanceReport(
     staycationData: List<Map<String, String>>,
     tourData: List<Map<String, String>>,
     reportHeader: String,
+    sortedBy: String,
+    dateHeader: String,
+    dateRange: String,
+): String {
+
+    return """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Report</title>
+            <style>
+
+
+                span {
+                    width: 100%;
+                }
+
+                #address-date-range {
+                    display: flex;
+                    justify-content: space-between;
+                }
+
+                #date-range {
+                    text-align: end;
+                }
+
+                #report-id, #report-date, #report-sort {
+                    text-align: center;
+                }
+
+                #table-container {
+                    overflow-x: auto; /* Enable horizontal scrolling */
+                }
+
+                table {
+                    border-collapse: collapse;
+                    width: 100%;
+                }
+
+                th, td {
+                    border: 1px solid #000000;
+                    text-align: left;
+                    padding: 8px;
+                }
+
+                th {
+                    background-color: #f2f2f2;
+                }
+
+                .signature-line {
+                    text-align: center; /* Align content in the middle */
+                }
+
+                .signature-line p {
+                    margin: 0; /* Remove default margin */
+                }
+
+                .signature-line p:first-child {
+                    width: 300px; /* Adjust width as needed */
+                    border-top: 1px solid black; /* Add border to create the line */
+                }
+
+            </style>
+        </head>
+        <body>
+            <h1 id="report-id">$reportHeader</h1>
+            <h3 id="report-sort">$sortedBy</h3>
+            <h3 id="report-date">$dateHeader</h3>
+
+            <h2>TripNILA</h2>
+
+            <div id="contact">
+                <div id="address-date-range">
+                    <span>PUP Sta. Mesa, Manila, Philippines</span>
+                    <span id="date-range">$dateRange</span>
+                </div>
+                <p>(+63)123456789</p>
+                <p>tripnila@tripnila.com</p>
+            </div>
+
+
+            <div id="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Title</th>
+                            <th>Host Name</th>
+                            <th>Number of Bookings</th>
+                            <th>Completed Bookings</th>
+                            <th>Pending Bookings</th>
+                            <th>Cancelled Bookings</th>
+                            <th>Total Views</th>
+                            <th>Average Rating</th>
+
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <!-- Table rows will be dynamically added here -->
+                    </tbody>
+                </table>
+            </div>
+
+
+
+            <br><br><br>
+            <div class="signature-line">
+                <p>Signed by</p>
+            </div>
+
+            <script>
+                // Sample data for the table
+                var staycationData = ${staycationData.joinToString(separator = ",", prefix = "[", postfix = "]") {
+        it.entries.joinToString(separator = ",", prefix = "{", postfix = "}") { (key, value) ->
+            """"$key":"$value""""
+        }
+    }}
+
+                var tourData = ${tourData.joinToString(separator = ",", prefix = "[", postfix = "]") {
+        it.entries.joinToString(separator = ",", prefix = "{", postfix = "}") { (key, value) ->
+            """"$key":"$value""""
+        }
+    }}
+
+                function populateTable() {
+                    var tableBody = document.getElementById("table-body");
+                    tableBody.innerHTML = ""; // Clear existing rows
+
+                     // Create a new row for "Staycation" above the other rows
+                    var staycationRow = document.createElement("tr");
+
+                    // Loop to create 9 columns and empty their content except for the first column
+                    for (var i = 0; i < 9; i++) {
+                        var cell = document.createElement("td");
+                        if (i === 0) {
+                            var boldText = document.createElement("strong");
+                            boldText.textContent = "Staycation";
+                            cell.appendChild(boldText);
+                        }
+                        staycationRow.appendChild(cell);
+                    }
+                    tableBody.appendChild(staycationRow);
+
+                    staycationData.forEach(function(item) {
+                        var row = document.createElement("tr");
+                        var isFirstColumn = true; // Flag to track if it's the first column
+                        Object.values(item).forEach(function(value) {
+                            var cell = document.createElement("td");
+                            if (isFirstColumn) {
+                                // Skip populating data in the first column
+                                isFirstColumn = false; // Reset the flag for the next row
+                            } else {
+                                cell.textContent = value;
+                            }
+                            row.appendChild(cell);
+                        });
+                        tableBody.appendChild(row);
+                    });
+
+                    var tourRow = document.createElement("tr");
+
+                    // Loop to create 9 columns and empty their content except for the first column
+                    for (var i = 0; i < 9; i++) {
+                        var cell = document.createElement("td");
+                        if (i === 0) {
+                            var boldText = document.createElement("strong");
+                            boldText.textContent = "Tour";
+                            cell.appendChild(boldText);
+                        }
+                        tourRow.appendChild(cell);
+                    }
+                    tableBody.appendChild(tourRow);
+
+                    tourData.forEach(function(item) {
+                        var row = document.createElement("tr");
+                        var isFirstColumn = true; // Flag to track if it's the first column
+                        Object.values(item).forEach(function(value) {
+                            var cell = document.createElement("td");
+                            if (isFirstColumn) {
+                                // Skip populating data in the first column
+                                isFirstColumn = false; // Reset the flag for the next row
+                            } else {
+                                cell.textContent = value;
+                            }
+                            row.appendChild(cell);
+                        });
+                        tableBody.appendChild(row);
+                    });
+                }
+
+                // Call the function to populate the table when the page loads
+                window.onload = populateTable;
+            </script>
+        </body>
+        </html>
+    """
+}
+
+
+private fun getHtmlContentForSalesReport(
+    staycationData: List<Map<String, String>>,
+    tourData: List<Map<String, String>>,
+    reportHeader: String,
+    sortedBy: String,
     dateHeader: String,
     dateRange: String,
     totalGrossSales: String,
@@ -213,75 +463,76 @@ private fun getHtmlContent(
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Report</title>
             <style>
-                
-        
+
+
                 span {
                     width: 100%;
                 }
-        
+
                 #address-date-range {
                     display: flex;
                     justify-content: space-between;
                 }
-        
+
                 #date-range {
                     text-align: end;
                 }
-        
-                #report-id, #report-date {
+
+                #report-id, #report-date, #report-sort {
                     text-align: center;
                 }
-        
+
                 #table-container {
                     overflow-x: auto; /* Enable horizontal scrolling */
                 }
-        
+
                 table {
                     border-collapse: collapse;
                     width: 100%;
                 }
-        
+
                 th, td {
                     border: 1px solid #000000;
                     text-align: left;
                     padding: 8px;
                 }
-        
+
                 th {
                     background-color: #f2f2f2;
                 }
-        
+
                 .signature-line {
                     text-align: center; /* Align content in the middle */
                 }
-        
+
                 .signature-line p {
                     margin: 0; /* Remove default margin */
                 }
-        
+
                 .signature-line p:first-child {
                     width: 300px; /* Adjust width as needed */
                     border-top: 1px solid black; /* Add border to create the line */
                 }
-        
+
             </style>
         </head>
         <body>
             <h1 id="report-id">$reportHeader</h1>
+            <h3 id="report-sort">$sortedBy</h3>
             <h3 id="report-date">$dateHeader</h3>
-        
+
             <h2>TripNILA</h2>
-            
+
             <div id="contact">
                 <div id="address-date-range">
-                    <span>PUP Sta. Mesa, Manila, Philippines</span> 
+                    <span>PUP Sta. Mesa, Manila, Philippines</span>
                     <span id="date-range">$dateRange</span>
                 </div>
                 <p>(+63)123456789</p>
                 <p>tripnila@tripnila.com</p>
             </div>
-            
-        
+
+
             <div id="table-container">
                 <table>
                     <thead>
@@ -300,39 +551,39 @@ private fun getHtmlContent(
                     </tbody>
                 </table>
             </div>
-            
-        
-            
+
+
+
             <br><br><br>
             <div class="signature-line">
                 <p>Signed by</p>
             </div>
-        
+
             <script>
                 // Sample data for the table
                 var staycationData = ${staycationData.joinToString(separator = ",", prefix = "[", postfix = "]") {
-                    it.entries.joinToString(separator = ",", prefix = "{", postfix = "}") { (key, value) ->
-                        """"$key":"$value""""
-                    }
-                }}
-                
+        it.entries.joinToString(separator = ",", prefix = "{", postfix = "}") { (key, value) ->
+            """"$key":"$value""""
+        }
+    }}
+
                 var tourData = ${tourData.joinToString(separator = ",", prefix = "[", postfix = "]") {
-                    it.entries.joinToString(separator = ",", prefix = "{", postfix = "}") { (key, value) ->
-                        """"$key":"$value""""
-                    }
-                }}
-                
+        it.entries.joinToString(separator = ",", prefix = "{", postfix = "}") { (key, value) ->
+            """"$key":"$value""""
+        }
+    }}
+
                 var totalGrossSales = "$totalGrossSales";
                 var totalCollectedCommission = "$totalCollectedCommission";
                 var totalPendingCommission = "$totalPendingCommission";
-                  
+
                 function populateTable() {
                     var tableBody = document.getElementById("table-body");
                     tableBody.innerHTML = ""; // Clear existing rows
-        
+
                      // Create a new row for "Staycation" above the other rows
                     var staycationRow = document.createElement("tr");
-        
+
                     // Loop to create 7 columns and empty their content except for the first column
                     for (var i = 0; i < 7; i++) {
                         var cell = document.createElement("td");
@@ -344,7 +595,7 @@ private fun getHtmlContent(
                         staycationRow.appendChild(cell);
                     }
                     tableBody.appendChild(staycationRow);
-        
+
                     staycationData.forEach(function(item) {
                         var row = document.createElement("tr");
                         var isFirstColumn = true; // Flag to track if it's the first column
@@ -360,9 +611,9 @@ private fun getHtmlContent(
                         });
                         tableBody.appendChild(row);
                     });
-        
+
                     var tourRow = document.createElement("tr");
-        
+
                     // Loop to create 7 columns and empty their content except for the first column
                     for (var i = 0; i < 7; i++) {
                         var cell = document.createElement("td");
@@ -374,7 +625,7 @@ private fun getHtmlContent(
                         tourRow.appendChild(cell);
                     }
                     tableBody.appendChild(tourRow);
-        
+
                     tourData.forEach(function(item) {
                         var row = document.createElement("tr");
                         var isFirstColumn = true; // Flag to track if it's the first column
@@ -390,9 +641,9 @@ private fun getHtmlContent(
                         });
                         tableBody.appendChild(row);
                     });
-        
+
                     var totalRow = document.createElement("tr");
-        
+
                     // Loop to create 7 columns and empty their content except for the first column
                     for (var i = 0; i < 7; i++) {
                         var cell = document.createElement("td");
@@ -417,7 +668,7 @@ private fun getHtmlContent(
                     }
                     tableBody.appendChild(totalRow);
                 }
-        
+
                 // Call the function to populate the table when the page loads
                 window.onload = populateTable;
             </script>
@@ -447,5 +698,5 @@ fun exportAsPdf(fileName: String, webView: WebView?, context: Context) {
 @Preview
 @Composable
 private fun GeneratedReportScreenPreview() {
-   // GeneratedReportScreen()
+    // GeneratedReportScreen()
 }

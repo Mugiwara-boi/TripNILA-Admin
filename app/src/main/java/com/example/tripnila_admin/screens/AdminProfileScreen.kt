@@ -58,7 +58,7 @@ fun AdminProfileScreen(
     val horizontalPaddingValue = 16.dp
     val verticalPaddingValue = 10.dp
 
-    val selectedItemIndex by rememberSaveable { mutableIntStateOf(2) }
+    val selectedItemIndex by rememberSaveable { mutableIntStateOf(3) }
 
     Surface(
         modifier = Modifier

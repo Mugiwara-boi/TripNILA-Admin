@@ -187,23 +187,24 @@ fun AdminReportsScreen(
     var showDialog by remember {
         mutableStateOf(false)
     }
+//
+//    LaunchedEffect(generateExcelClicked) {
+//        if (generateExcelClicked) {
+//            adminReports.generateExcelFile(context)
+//            generateExcelClicked = false
+//        }
+//    }
 
-    LaunchedEffect(generateExcelClicked) {
-        if (generateExcelClicked) {
-            adminReports.generateExcelFile(context)
-            generateExcelClicked = false
-        }
-    }
-
-    LaunchedEffect(
-        isStaycationBookingsFetched,
-        isTourBookingsFetched
-    ) {
-        if (isStaycationBookingsFetched && isTourBookingsFetched) {
-            onNavToGeneratedReport("salesReport")
-            showDialog = false
-        }
-    }
+//    LaunchedEffect(
+//        isStaycationBookingsFetched,
+//        isTourBookingsFetched
+//    ) {
+//        if (isStaycationBookingsFetched && isTourBookingsFetched) {
+//            onNavToGeneratedReport("salesReport")
+//            showDialog = false
+//            adminReports.resetFetchStatus()
+//        }
+//    }
 
 
     Surface(
@@ -239,82 +240,82 @@ fun AdminReportsScreen(
                         .padding(it)
                 ) {
 
-                    item {
-
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontalPaddingValue, verticalPaddingValue)
-                        ) {
-                            Text(
-                                text = "Generate Reports",
-                                color = Color(0xff333333),
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.padding(bottom = 10.dp)
-                            )
-                            AppFilledButton(
-                                buttonText = "Generate Sales Report",
-                                onClick = {
-                                    showDialog = true
-                                   // onNavToGeneratedReport()
-                                }
-                            )
-
-//                            Row(
-//                                verticalAlignment = Alignment.CenterVertically,
-//                                modifier = Modifier.align(Alignment.End),
-//                            ) {
-//                                Text(
-//                                    text = selectedReportFilter,
-//                                    fontSize = 12.sp,
-//                                    fontWeight = FontWeight.Medium,
-//                                )
-//                                IconButton(
-//                                    modifier = Modifier.size(24.dp),
-//                                    onClick = { expanded = true }
-//                                ) {
-//                                    Icon(
-//                                        imageVector = icon,
-//                                        contentDescription = "",
-//                                    )
-//                                }
-//                                DropdownMenu(
-//                                    expanded = expanded,
-//                                    onDismissRequest = { expanded = false },
-//                                    modifier = Modifier
-//                                        .background(Color.White)
-//                                ) {
-//                                    options.forEach { label ->
-//                                        DropdownMenuItem(
-//                                            text = {
-//                                                Text(
-//                                                    text = label,
-//                                                    fontSize = 12.sp
-//                                                )
-//                                            },
-//                                            colors = MenuDefaults.itemColors(
-//                                                textColor = Color(0xFF6B6B6B)
-//                                            ),
-//                                            onClick = {
-//                                                adminReports.setSelectedFilter(label)
-//                                                expanded = false
-//                                            },
-//                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
-//                                        )
-//                                    }
-//                                }
-//                            }
-//                            AppFilledButton(
-//                                buttonText = if (selectedReportFilter == "All") "Generate $selectedReportFilter Report" else "Generate $selectedReportFilter's Report",
-//                                isLoading = isGeneratingExcel,
-//                                onClick = {
-//                                    generateExcelClicked = true
-//                                },
-//                                modifier = Modifier.align(Alignment.CenterHorizontally)
+//                    item {
+//
+//                        Column(
+//                            modifier = Modifier
+//                                .fillMaxWidth()
+//                                .padding(horizontalPaddingValue, verticalPaddingValue)
+//                        ) {
+//                            Text(
+//                                text = "Generate Reports",
+//                                color = Color(0xff333333),
+//                                fontSize = 18.sp,
+//                                fontWeight = FontWeight.Medium,
+//                                modifier = Modifier.padding(bottom = 10.dp)
 //                            )
-                        }
-                    }
+//                            AppFilledButton(
+//                                buttonText = "Generate Sales Report",
+//                                onClick = {
+//                                    showDialog = true
+//                                   // onNavToGeneratedReport()
+//                                }
+//                            )
+//
+////                            Row(
+////                                verticalAlignment = Alignment.CenterVertically,
+////                                modifier = Modifier.align(Alignment.End),
+////                            ) {
+////                                Text(
+////                                    text = selectedReportFilter,
+////                                    fontSize = 12.sp,
+////                                    fontWeight = FontWeight.Medium,
+////                                )
+////                                IconButton(
+////                                    modifier = Modifier.size(24.dp),
+////                                    onClick = { expanded = true }
+////                                ) {
+////                                    Icon(
+////                                        imageVector = icon,
+////                                        contentDescription = "",
+////                                    )
+////                                }
+////                                DropdownMenu(
+////                                    expanded = expanded,
+////                                    onDismissRequest = { expanded = false },
+////                                    modifier = Modifier
+////                                        .background(Color.White)
+////                                ) {
+////                                    options.forEach { label ->
+////                                        DropdownMenuItem(
+////                                            text = {
+////                                                Text(
+////                                                    text = label,
+////                                                    fontSize = 12.sp
+////                                                )
+////                                            },
+////                                            colors = MenuDefaults.itemColors(
+////                                                textColor = Color(0xFF6B6B6B)
+////                                            ),
+////                                            onClick = {
+////                                                adminReports.setSelectedFilter(label)
+////                                                expanded = false
+////                                            },
+////                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+////                                        )
+////                                    }
+////                                }
+////                            }
+////                            AppFilledButton(
+////                                buttonText = if (selectedReportFilter == "All") "Generate $selectedReportFilter Report" else "Generate $selectedReportFilter's Report",
+////                                isLoading = isGeneratingExcel,
+////                                onClick = {
+////                                    generateExcelClicked = true
+////                                },
+////                                modifier = Modifier.align(Alignment.CenterHorizontally)
+////                            )
+//                        }
+//                    }
 
 
                     item {
