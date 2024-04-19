@@ -9,6 +9,7 @@ import com.example.tripnila_admin.data.StaycationBooking
 import com.example.tripnila_admin.data.Tour
 import com.example.tripnila_admin.data.TourBooking
 import com.example.tripnila_admin.data.Tourist
+import com.example.tripnila_admin.data.View
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -781,12 +782,20 @@ class AdminTables : ViewModel() {
 
         val (startDate, endDate) = parseDateRange(_dateRange.value)
 
-        val tempTourPerformance = _toursPerformance.value.filter {
-            it.bookingDate in startDate..endDate
+        val tempTourPerformance = _toursPerformance.value.filter { performance ->
+            performance.bookingDate in startDate..endDate
+        }.map { performance ->
+            performance.copy(views = performance.views.filter { view ->
+                view.date in startDate..endDate
+            })
         }
 
-        val tempStaycationPerformance = _staycationsPerformance.value.filter {
-            it.bookingDate in startDate..endDate
+        val tempStaycationPerformance = _staycationsPerformance.value.filter { performance ->
+            performance.bookingDate in startDate..endDate
+        }.map { performance ->
+            performance.copy(views = performance.views.filter { view ->
+                view.date in startDate..endDate
+            })
         }
 
         groupPerformanceById(tempTourPerformance, "Tour", true)
@@ -830,14 +839,21 @@ class AdminTables : ViewModel() {
 
         val (startDate, endDate) = parseDateRange(getDateRange())
 
-        val tempTourPerformance = _toursPerformance.value.filter {
-            it.bookingDate in startDate..endDate
+        val tempTourPerformance = _toursPerformance.value.filter { performance ->
+            performance.bookingDate in startDate..endDate
+        }.map { performance ->
+            performance.copy(views = performance.views.filter { view ->
+                view.date in startDate..endDate
+            })
         }
 
-        val tempStaycationPerformance = _staycationsPerformance.value.filter {
-            it.bookingDate in startDate..endDate
+        val tempStaycationPerformance = _staycationsPerformance.value.filter { performance ->
+            performance.bookingDate in startDate..endDate
+        }.map { performance ->
+            performance.copy(views = performance.views.filter { view ->
+                view.date in startDate..endDate
+            })
         }
-
         groupPerformanceById(tempTourPerformance, "Tour", false)
         groupPerformanceById(tempStaycationPerformance, "Staycation", false)
 
@@ -849,12 +865,28 @@ class AdminTables : ViewModel() {
 
         val (startDate, endDate) = parseDateRange(getDateRange())
 
-        val tempTourPerformance = _toursPerformance.value.filter {
-            it.bookingDate in startDate..endDate
+//        val tempTourPerformance = _toursPerformance.value.filter {
+//            it.bookingDate in startDate..endDate
+//        }
+//
+//        val tempStaycationPerformance = _staycationsPerformance.value.filter {
+//            it.bookingDate in startDate..endDate
+//        }
+
+        val tempTourPerformance = _toursPerformance.value.filter { performance ->
+            performance.bookingDate in startDate..endDate
+        }.map { performance ->
+            performance.copy(views = performance.views.filter { view ->
+                view.date in startDate..endDate
+            })
         }
 
-        val tempStaycationPerformance = _staycationsPerformance.value.filter {
-            it.bookingDate in startDate..endDate
+        val tempStaycationPerformance = _staycationsPerformance.value.filter { performance ->
+            performance.bookingDate in startDate..endDate
+        }.map { performance ->
+            performance.copy(views = performance.views.filter { view ->
+                view.date in startDate..endDate
+            })
         }
 
         groupPerformanceById(tempTourPerformance, "Tour", false)
@@ -1199,7 +1231,10 @@ class AdminTables : ViewModel() {
             val completedBookings = servicesPerformance.filter { it.bookingStatus == "Completed" }.size
             val pendingBookings = servicesPerformance.filter { it.bookingStatus == "Pending" || it.bookingStatus == "Ongoing" }.size
             val cancelledBookings = servicesPerformance.filter { it.bookingStatus == "Cancelled" }.size
-            val views = servicesPerformance.sumOf { it.views }
+          //  val views = servicesPerformance.sumOf { it.views }
+         //   val views = servicesPerformance.sumOf { it.views.sumOf { view -> view.views } }
+           // val views = servicesPerformance.map { it.views }.sumOf { it.sumOf { it.views } }
+            val views = servicesPerformance.first().views.sumOf { it.views }
 
             val totalRating = servicePerformanceList.sumOf { it.rating }
             val ratingSize = servicesPerformance.filter { it.rating != 0 }.size
@@ -1318,19 +1353,29 @@ class AdminTables : ViewModel() {
         }
     }
 
-    private suspend fun fetchServiceViews(serviceID: String, serviceType: String): Int {
-        return try {
-            val documentSnapshot = db.collection(serviceViewsCollection)
+    private suspend fun fetchServiceViews(serviceID: String, serviceType: String): List<View> {
+
+        val views = mutableListOf<View>()
+
+        try {
+            val querySnapshot = db.collection(serviceViewsCollection)
                 .whereEqualTo("serviceId", serviceID)
                 .whereEqualTo("serviceType", serviceType)
                 .get()
                 .await()
 
-            val viewCount = documentSnapshot.documents.firstOrNull()?.getLong("viewCount") ?: 0
-            viewCount.toInt()
+            for (document in querySnapshot.documents) {
+                val id = document.id
+                val viewCount = document.getLong("viewCount")?.toInt() ?: 0
+                val month = document.getLong("month")?.toInt() ?: 0
+
+                views.add(View(id, month, viewCount))
+            }
+
         } catch (e: Exception) {
-            0
+            e.printStackTrace()
         }
+        return views
     }
 
     private suspend fun fetchReviewData(bookingId: String, serviceType: String): Review? {
