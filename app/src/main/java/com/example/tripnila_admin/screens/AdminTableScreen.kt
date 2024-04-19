@@ -91,6 +91,8 @@ fun AdminTableScreen(
 
     val staycationsPerformanceData by adminTable.staycationPerformanceMap.collectAsState()
     val toursPerformanceData by adminTable.tourPerformanceMap.collectAsState()
+    val staycationsSalesData by adminTable.staycationsSalesMap.collectAsState()
+    val toursSalesData by adminTable.tourSalesMap.collectAsState()
 
     LaunchedEffect(adminId) {
         if (staycationsPerformanceData.isEmpty() && toursPerformanceData.isEmpty()) {
@@ -100,8 +102,16 @@ fun AdminTableScreen(
             tourPerformanceDeferred.await()
             staycationPerformanceDeferred.await()
         }
+    }
 
+    LaunchedEffect(adminId) {
+        if (staycationsSalesData.isEmpty() && toursSalesData.isEmpty()) {
+            val tourPerformanceDeferred = async { adminTable.fetchTourBookings() }
+            val staycationPerformanceDeferred = async { adminTable.fetchStaycationBookings() }
 
+            tourPerformanceDeferred.await()
+            staycationPerformanceDeferred.await()
+        }
     }
 
     val isGeneratingReport by adminTable.isGeneratingReport.collectAsState()
@@ -109,10 +119,18 @@ fun AdminTableScreen(
 
     val isFetchingStaycationsPerformance by adminTable.isFetchingStaycationsPerformance.collectAsState()
     val isFetchingToursPerformance by adminTable.isFetchingToursPerformance.collectAsState()
+    val isFetchingStaycationsSales by adminTable.isFetchingStaycationsSales.collectAsState()
+    val isFetchingToursSales by adminTable.isFetchingToursSales.collectAsState()
 
     val selectedSort by adminTable.selectedSort.collectAsState()
     val selectedMonthPerformance by adminTable.selectedMonthPerformance.collectAsState()
     val selectedYearPerformance by adminTable.selectedYearPerformance.collectAsState()
+
+    val selectedSalesSort by adminTable.selectedSalesSort.collectAsState()
+    val selectedMonthSales by adminTable.selectedMonthSales.collectAsState()
+    val selectedYearSales by adminTable.selectedYearSales.collectAsState()
+
+
 
     val selectedPeriod by adminTable.selectedPeriod.collectAsState()
     val selectedMonth by adminTable.selectedMonth.collectAsState()
@@ -133,6 +151,11 @@ fun AdminTableScreen(
         "Pending Bookings", "Cancelled Bookings", "Total Views", "Average Rating"
     )
 
+    val salesTableHeader = listOf(
+        "", "Title", "Host Name", "Number of Bookings", "Gross Booking Sales",
+        "Collected Commission", "Pending Commission"
+    )
+
     val mapKey = listOf(
         "id",
         "title",
@@ -143,6 +166,16 @@ fun AdminTableScreen(
         "cancelledBookings",
         "views",
         "averageRating",
+    )
+
+    val salesMapKey = listOf(
+        "id",
+        "title",
+        "hostName",
+        "numberOfBookings" ,
+        "grossBookingSales",
+        "collectedCommission",
+        "pendingCommission",
     )
 
     val tableMonthOptions = listOf(
@@ -166,6 +199,17 @@ fun AdminTableScreen(
         "Lowest Views",
         "Highest Rating",
         "Lowest Rating"
+    )
+
+    val salesSortOptions = listOf(
+        "Highest Booking Count",
+        "Lowest Booking Count",
+        "Highest Gross Booking Sales",
+        "Lowest Gross Booking Sales",
+        "Highest Collected Commission",
+        "Lowest Collected Commission",
+        "Highest Pending Commission",
+        "Lowest Pending Commission",
     )
 
     val selectionTab = listOf(
@@ -194,6 +238,15 @@ fun AdminTableScreen(
     else
         Icons.Filled.KeyboardArrowDown
 
+    var expandMonthSales by remember {
+        mutableStateOf(false)
+    }
+
+    val monthSalesIcon = if (expandMonthSales)
+        Icons.Filled.KeyboardArrowUp
+    else
+        Icons.Filled.KeyboardArrowDown
+
     var expandYearPerformance by remember {
         mutableStateOf(false)
     }
@@ -203,11 +256,29 @@ fun AdminTableScreen(
     else
         Icons.Filled.KeyboardArrowDown
 
+    var expandYearSales by remember {
+        mutableStateOf(false)
+    }
+
+    val yearSalesIcon = if (expandYearSales)
+        Icons.Filled.KeyboardArrowUp
+    else
+        Icons.Filled.KeyboardArrowDown
+
     var expandSort by remember {
         mutableStateOf(false)
     }
 
     val sortIcon = if (expandSort)
+        Icons.Filled.KeyboardArrowUp
+    else
+        Icons.Filled.KeyboardArrowDown
+
+    var expandSalesSort by remember {
+        mutableStateOf(false)
+    }
+
+    val sortSalesIcon = if (expandSalesSort)
         Icons.Filled.KeyboardArrowUp
     else
         Icons.Filled.KeyboardArrowDown
@@ -234,9 +305,22 @@ fun AdminTableScreen(
     else
         Icons.Filled.KeyboardArrowDown
 
+    var reportType by remember {
+        mutableStateOf("")
+    }
+
+    var expandDialogSort by remember {
+        mutableStateOf(false)
+    }
+
+    val sortDialogIcon = if (expandDialogSort)
+        Icons.Filled.KeyboardArrowUp
+    else
+        Icons.Filled.KeyboardArrowDown
+
     LaunchedEffect(isReportGenerated) {
         if (isReportGenerated) {
-            onNavToGeneratedReport("performanceReport")
+            onNavToGeneratedReport(reportType)
             showDialog = false
             adminTable.resetReportGenerated()
         }
@@ -272,6 +356,294 @@ fun AdminTableScreen(
                     .fillMaxSize()
                     .padding(it)
             ) {
+
+                item {
+                    Card(
+                        shape = RoundedCornerShape(10.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.White
+                        ),
+                        elevation = CardDefaults.cardElevation(
+                            defaultElevation = 10.dp
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontalPaddingValue, verticalPaddingValue)
+                    ) {
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontalPaddingValue, verticalPaddingValue)
+                        ) {
+
+                            Text(
+                                text = "Sales",
+                                color = Color(0xff333333),
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(bottom = 10.dp)
+                            )
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.End,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(
+                                        top = 3.dp,
+                                        start = 12.dp,
+                                        end = 12.dp
+                                    )
+                            ) {
+
+                                Text(
+                                    text = "Filter By: $selectedMonthSales",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                                IconButton(
+                                    modifier = Modifier.size(24.dp),
+                                    onClick = { expandMonthSales = true }
+                                ) {
+                                    Icon(
+                                        imageVector = monthSalesIcon,
+                                        contentDescription = "",
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = expandMonthSales,
+                                    onDismissRequest = { expandMonthSales = false },
+                                    modifier = Modifier
+                                        .background(Color.White)
+                                ) {
+                                    tableMonthOptions.forEach { label ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    text = label,
+                                                    fontSize = 12.sp
+                                                )
+                                            },
+                                            colors = MenuDefaults.itemColors(
+                                                textColor = Color(0xFF6B6B6B)
+                                            ),
+                                            onClick = {
+                                                adminTable.setSelectedMonthSales(label)
+                                                expandMonthSales = false
+                                            },
+                                            contentPadding = PaddingValues(
+                                                horizontal = 10.dp,
+                                                vertical = 0.dp
+                                            )
+                                        )
+                                    }
+
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = selectedYearSales.toString(),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                                IconButton(
+                                    modifier = Modifier.size(24.dp),
+                                    onClick = { expandYearSales = true }
+                                ) {
+                                    Icon(
+                                        imageVector = yearSalesIcon,
+                                        contentDescription = "",
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = expandYearSales,
+                                    onDismissRequest = { expandYearSales = false },
+                                    modifier = Modifier
+                                        .background(Color.White)
+                                ) {
+                                    tableYearOptions.forEach { label ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    text = label.toString(),
+                                                    fontSize = 12.sp
+                                                )
+                                            },
+                                            colors = MenuDefaults.itemColors(
+                                                textColor = Color(0xFF6B6B6B)
+                                            ),
+                                            onClick = {
+                                                adminTable.setSelectedYearSales(label.toString())
+                                                expandYearSales = false
+                                            },
+                                            contentPadding = PaddingValues(
+                                                horizontal = 10.dp,
+                                                vertical = 0.dp
+                                            )
+                                        )
+                                    }
+
+                                }
+                            }
+
+
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.End,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(
+                                        bottom = 8.dp,
+                                        start = 12.dp,
+                                        end = 12.dp
+                                    )
+                            ) {
+                                Text(
+                                    text = "Sort By: $selectedSalesSort",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                                IconButton(
+                                    modifier = Modifier.size(24.dp),
+                                    onClick = { expandSalesSort = true }
+                                ) {
+                                    Icon(
+                                        imageVector = sortSalesIcon,
+                                        contentDescription = "",
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = expandSalesSort,
+                                    onDismissRequest = { expandSalesSort = false },
+                                    modifier = Modifier
+                                        .background(Color.White)
+                                ) {
+                                    salesSortOptions.forEach { label ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    text = label,
+                                                    fontSize = 12.sp
+                                                )
+                                            },
+                                            colors = MenuDefaults.itemColors(
+                                                textColor = Color(0xFF6B6B6B)
+                                            ),
+                                            onClick = {
+                                                adminTable.setSalesSortBy(label)
+                                                expandSalesSort = false
+                                            },
+                                            contentPadding = PaddingValues(
+                                                horizontal = 10.dp,
+                                                vertical = 0.dp
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (isFetchingStaycationsSales || isFetchingToursSales) {
+
+                                Box(modifier = Modifier
+                                    .fillMaxWidth(.96f)
+                                    .align(Alignment.CenterHorizontally)
+                                    .height(300.dp)
+                                ) {
+                                    LoadingScreen(
+                                        isLoadingCompleted = false,
+                                        isLightModeActive = true
+                                    )
+                                }
+
+                            } else {
+                                Log.d("Row Size", "${(staycationsSalesData.size + 2 + toursSalesData.size + 3)}")
+
+                                Table(
+                                    modifier = Modifier
+                                        .fillMaxWidth(.96f)
+                                        .align(Alignment.CenterHorizontally)
+                                        .height(300.dp),
+                                    columnCount = salesTableHeader.size,
+                                    rowCount = (staycationsSalesData.size + 2 + toursSalesData.size + 1),
+                                    cellContent = { columnIndex, rowIndex ->
+
+                                        val isHeader = rowIndex == 0
+                                        val cellText =
+                                            if (isHeader) {
+                                                salesTableHeader[columnIndex]
+                                            }
+                                            else if (rowIndex == 1) {
+                                                if (columnIndex == 0) {
+                                                    "Staycation"
+                                                } else {
+                                                    ""
+
+                                                }
+                                            }                       //18 //CHECKED
+                                            else if ((rowIndex == staycationsSalesData.size + 2)) {
+                                                if (columnIndex == 0) {
+                                                    "Tour"
+                                                } else {
+                                                    ""
+                                                }
+                                            }
+                                            else if (columnIndex == 0) {
+                                                ""
+                                            }           //17            //18        //CHECKED
+                                            else if (rowIndex < (staycationsSalesData.size + 2)) {
+                                                staycationsSalesData[rowIndex - 2][salesMapKey[columnIndex]] ?: ""
+                                            }          // 19        //18   16= staycationsPerformanceData.size   2 = HEADER + "STAYCATION ROW" //CHECKED
+                                            else if (rowIndex > (staycationsSalesData.size + 2)) {
+
+                                                //19   16= staycationsPerformanceData.size   2 = HEADER + "STAYCATION ROW" 1 = "TOUR" ROW
+                                                toursSalesData[rowIndex - (staycationsSalesData.size + 2 + 1)][salesMapKey[columnIndex]] ?: ""
+                                            }
+                                            else {
+                                                //     staycationsPerformanceData[rowIndex - 2][mapKey[columnIndex]] ?: ""
+
+                                                //19        //19   16= staycationsPerformanceData.size   2 = HEADER + "STAYCATION ROW" 1 = "TOUR" ROW
+                                                ""
+                                                //[rowIndex - (staycationsPerformanceData.size + 2 + 1)]
+                                            }
+
+                                        // "Column: $columnIndex; Row: $rowIndex"
+
+
+
+                                        Text(
+                                            text = cellText,
+                                            fontWeight = if (isHeader || cellText == "Staycation" || cellText == "Tour") FontWeight.Bold else FontWeight.Normal,
+                                            modifier = Modifier
+                                                .wrapContentSize(Alignment.Center)
+                                                .padding(all = 4.dp)
+
+                                        )
+
+                                    }
+                                )
+
+                            }
+
+                            AppFilledButton(
+                                buttonText = "Generate Sales Report",
+                                onClick = {
+                                    showDialog = true
+                                    reportType = "salesReport"
+                                    // onNavToGeneratedReport()
+                                },
+                                enabled = !isFetchingStaycationsSales && !isFetchingToursSales,
+                                contentFontSize = 14.sp,
+                                contentPadding = PaddingValues(5.dp, 0.dp),
+                                modifier = Modifier
+                                    .padding(top = 12.dp)
+                                    .align(Alignment.End)
+                            )
+
+                        }
+
+                    }
+                }
 
                 item {
                     Card(
@@ -545,6 +917,7 @@ fun AdminTableScreen(
                                 buttonText = "Generate Performance Report",
                                 onClick = {
                                     showDialog = true
+                                    reportType = "performanceReport"
                                     // onNavToGeneratedReport()
                                 },
                                 enabled = !isFetchingStaycationsPerformance && !isFetchingToursPerformance,
@@ -800,6 +1173,119 @@ fun AdminTableScreen(
                                 }
                             }
                         }
+
+                        Text(
+                            text = "Select Sort",
+                            color = Color(0xff333333),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+
+                        if (reportType == "salesReport") {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(
+                                    vertical = 8.dp,
+                                    horizontal = 12.dp
+                                )
+                            ) {
+                                Text(
+                                    text = selectedSalesSort,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                                IconButton(
+                                    modifier = Modifier.size(24.dp),
+                                    onClick = { expandDialogSort = true }
+                                ) {
+                                    Icon(
+                                        imageVector = sortDialogIcon,
+                                        contentDescription = "",
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = expandDialogSort,
+                                    onDismissRequest = { expandDialogSort = false },
+                                    modifier = Modifier
+                                        .background(Color.White)
+                                ) {
+                                    salesSortOptions.forEach { label ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    text = label,
+                                                    fontSize = 12.sp
+                                                )
+                                            },
+                                            colors = MenuDefaults.itemColors(
+                                                textColor = Color(0xFF6B6B6B)
+                                            ),
+                                            onClick = {
+                                                adminTable.setSalesSortBy(label)
+                                                expandDialogSort = false
+                                            },
+                                            contentPadding = PaddingValues(
+                                                horizontal = 10.dp,
+                                                vertical = 0.dp
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+
+                        } else if (reportType == "performanceReport") {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(
+                                    vertical = 8.dp,
+                                    horizontal = 12.dp
+                                )
+                            ) {
+                                Text(
+                                    text = selectedSort,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                                IconButton(
+                                    modifier = Modifier.size(24.dp),
+                                    onClick = { expandDialogSort = true }
+                                ) {
+                                    Icon(
+                                        imageVector = sortDialogIcon,
+                                        contentDescription = "",
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = expandDialogSort,
+                                    onDismissRequest = { expandDialogSort = false },
+                                    modifier = Modifier
+                                        .background(Color.White)
+                                ) {
+                                    sortOptions.forEach { label ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    text = label,
+                                                    fontSize = 12.sp
+                                                )
+                                            },
+                                            colors = MenuDefaults.itemColors(
+                                                textColor = Color(0xFF6B6B6B)
+                                            ),
+                                            onClick = {
+                                                adminTable.setSortBy(label)
+                                                expandDialogSort = false
+                                            },
+                                            contentPadding = PaddingValues(
+                                                horizontal = 10.dp,
+                                                vertical = 0.dp
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     Row(
@@ -818,7 +1304,14 @@ fun AdminTableScreen(
                             isLoading = isGeneratingReport,
                             onClick = {
                                 scope.launch {
-                                    adminTable.generateReport()
+                                    Log.d("Report Type", reportType)
+
+                                    if (reportType == "salesReport") {
+                                        adminTable.generateSalesReport()
+                                    } else {
+                                        adminTable.generatePerformanceReport()
+                                    }
+
                                 }
                             },
                         )

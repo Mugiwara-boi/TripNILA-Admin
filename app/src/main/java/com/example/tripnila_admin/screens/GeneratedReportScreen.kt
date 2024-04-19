@@ -41,7 +41,6 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GeneratedReportScreen(
-    adminReports: AdminReports,
     adminTables: AdminTables,
     reportType: String,
     onNavToBack: () -> Unit
@@ -70,12 +69,12 @@ fun GeneratedReportScreen(
 //        mapOf("column1" to "Data 7", "column2" to "Data 8", "column3" to "Data 9", "column4" to "Data 2", "column5" to "Data 2", "column6" to "Data 2", "column7" to "Data 2")
 //    )
 
-//                      ADMIN REPORTS
+//                      SALES REPORTS
 //  -----------------------------------------------------------------------------------------------
 
 //    val staycationData by adminReports.staycationDataMap.collectAsState()
 //    val tourData by adminReports.tourDataMap.collectAsState()
-//
+
 //    val period by adminReports.selectedPeriod.collectAsState()
 //    val month by adminReports.selectedMonth.collectAsState()
 //    val year by adminReports.selectedYear.collectAsState()
@@ -98,9 +97,11 @@ fun GeneratedReportScreen(
 
 //  -----------------------------------------------------------------------------------------------
 
-    val staycationData by adminTables.staycationPerformanceMapForHTML.collectAsState()
-    val tourData by adminTables.tourPerformanceMapForHTML.collectAsState()
-    val sortedBy by adminTables.selectedSort.collectAsState()
+    val staycationData by if (reportType == "salesReport") adminTables.staycationsSalesMapForHTML.collectAsState() else adminTables.staycationPerformanceMapForHTML.collectAsState()
+    val tourData by if (reportType == "salesReport") adminTables.tourSalesMapForHTML.collectAsState() else adminTables.tourPerformanceMapForHTML.collectAsState()
+
+
+    val sortedBy by if (reportType == "salesReport") adminTables.selectedSalesSort.collectAsState() else adminTables.selectedSort.collectAsState()
 
     val period by adminTables.selectedPeriod.collectAsState()
     val month by adminTables.selectedMonth.collectAsState()
@@ -108,6 +109,20 @@ fun GeneratedReportScreen(
     val startMonth by adminTables.selectedStartMonth.collectAsState()
     val endMonth by adminTables.selectedEndMonth.collectAsState()
     val dateRange by adminTables.dateRange.collectAsState()
+
+    val staycationTotalCollectedCommission by adminTables.staycationTotalCollectedCommission.collectAsState()
+    val staycationTotalPendingCommission by adminTables.staycationTotalPendingCommission.collectAsState()
+    val staycationTotalGrossSale by adminTables.staycationTotalGrossSale.collectAsState()
+
+    val tourTotalCollectedCommission by adminTables.tourTotalCollectedCommission.collectAsState()
+    val tourTotalPendingCommission by adminTables.tourTotalPendingCommission.collectAsState()
+    val tourTotalGrossSale by adminTables.tourTotalGrossSale.collectAsState()
+
+
+
+    val totalGrossSales = "₱ ${staycationTotalGrossSale.plus(tourTotalGrossSale)}"
+    val totalCollectedCommission = "₱ ${staycationTotalCollectedCommission.plus(tourTotalCollectedCommission)}"
+    val totalPendingCommission = "₱ ${staycationTotalPendingCommission.plus(tourTotalPendingCommission)}"
 
 
 
@@ -124,10 +139,18 @@ fun GeneratedReportScreen(
         else -> "Unknown Error"
     }
 
+    val htmlString =
+        if (reportType == "salesReport") getHtmlContentForSalesReport(
+            staycationData, tourData, reportHeader, sortedBy, dateHeader, dateRange,
+            totalGrossSales, totalCollectedCommission, totalPendingCommission
+        )
+        else getHtmlContentForPerformanceReport(
+            staycationData, tourData, reportHeader, sortedBy, dateHeader, dateRange
+        )
 
-//    val totalGrossSales = "₱ ${staycationTotalGrossSale.plus(tourTotalGrossSale)}"
-//    val totalCollectedCommission = "₱ ${staycationTotalCollectedCommission.plus(tourTotalCollectedCommission)}"
-//    val totalPendingCommission = "₱ ${staycationTotalPendingCommission.plus(tourTotalPendingCommission)}"
+
+
+
 
 
 //    val dateRange = when(period) {
@@ -188,7 +211,8 @@ fun GeneratedReportScreen(
 //                                        dateHeader, dateRange, totalGrossSales, totalCollectedCommission,
 //                                        totalPendingCommission
 //                                    ),
-                                    getHtmlContentForPerformanceReport(staycationData, tourData, reportHeader, sortedBy, dateHeader, dateRange),
+   //                                 getHtmlContentForPerformanceReport(staycationData, tourData, reportHeader, sortedBy, dateHeader, dateRange),
+                                    htmlString,
                                     "text/html",
                                     "UTF-8",
                                     null)
@@ -203,7 +227,7 @@ fun GeneratedReportScreen(
 //                            dateHeader, dateRange, totalGrossSales, totalCollectedCommission,
 //                            totalPendingCommission
 //                        ),
-                        getHtmlContentForPerformanceReport(staycationData, tourData, reportHeader, sortedBy, dateHeader, dateRange),
+                        htmlString,
                         "text/html",
                         "UTF-8",
                         null)
@@ -423,6 +447,7 @@ private fun getHtmlContentForSalesReport(
     staycationData: List<Map<String, String>>,
     tourData: List<Map<String, String>>,
     reportHeader: String,
+    sortedBy: String,
     dateHeader: String,
     dateRange: String,
     totalGrossSales: String,
@@ -453,7 +478,7 @@ private fun getHtmlContentForSalesReport(
                     text-align: end;
                 }
 
-                #report-id, #report-date {
+                #report-id, #report-date, #report-sort {
                     text-align: center;
                 }
 
@@ -493,6 +518,7 @@ private fun getHtmlContentForSalesReport(
         </head>
         <body>
             <h1 id="report-id">$reportHeader</h1>
+            <h3 id="report-sort">$sortedBy</h3>
             <h3 id="report-date">$dateHeader</h3>
 
             <h2>TripNILA</h2>

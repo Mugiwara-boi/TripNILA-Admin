@@ -119,14 +119,13 @@ fun NavGraphBuilder.adminGraph(
         }
 
         composable(
-            route = AdminRoutes.GeneratedReport.name + "/{reportType}",
+            route = "${AdminRoutes.GeneratedReport.name}/{reportType}",
             arguments = listOf(navArgument("reportType") {
                 type = NavType.StringType
                 defaultValue = ""
             })
         ) {
             GeneratedReportScreen(
-                adminReports = adminReports,
                 adminTables = adminTables,
                 reportType = it.arguments?.getString("reportType") ?: "",
                 onNavToBack = {

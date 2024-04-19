@@ -5,7 +5,9 @@ import androidx.lifecycle.ViewModel
 import com.example.tripnila_admin.data.Review
 import com.example.tripnila_admin.data.ServicePerformance
 import com.example.tripnila_admin.data.Staycation
+import com.example.tripnila_admin.data.StaycationBooking
 import com.example.tripnila_admin.data.Tour
+import com.example.tripnila_admin.data.TourBooking
 import com.example.tripnila_admin.data.Tourist
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
@@ -61,10 +63,6 @@ class AdminTables : ViewModel() {
     private val _isTourPerformanceFetched = MutableStateFlow(false)
     val isTourPerformanceFetched = _isTourPerformanceFetched.asStateFlow()
 
-    private val _isGeneratingReport = MutableStateFlow(false)
-    val isGeneratingReport = _isGeneratingReport.asStateFlow()
-
-
     private val _selectedSort = MutableStateFlow("Highest Booking Count")
     val selectedSort = _selectedSort.asStateFlow()
 
@@ -74,7 +72,11 @@ class AdminTables : ViewModel() {
     private val _selectedYearPerformance = MutableStateFlow("All")
     val selectedYearPerformance = _selectedYearPerformance.asStateFlow()
 
+
     // GENERATE REPORT
+
+    private val _isGeneratingReport = MutableStateFlow(false)
+    val isGeneratingReport = _isGeneratingReport.asStateFlow()
 
     private val _selectedPeriod = MutableStateFlow("Monthly")
     val selectedPeriod = _selectedPeriod.asStateFlow()
@@ -97,6 +99,569 @@ class AdminTables : ViewModel() {
     private val _isReportGenerated = MutableStateFlow(false)
     val isReportGenerated = _isReportGenerated.asStateFlow()
 
+    // SALES
+
+    private val _staycationsSales = MutableStateFlow<List<StaycationBooking>>(emptyList())
+    val staycationsSales = _staycationsSales.asStateFlow()
+
+    private val _toursSales = MutableStateFlow<List<TourBooking>>(emptyList())
+    val toursSales = _toursSales.asStateFlow()
+
+    private val _staycationsSalesMap = MutableStateFlow<List<Map<String, String>>>(emptyList())
+    val staycationsSalesMap = _staycationsSalesMap.asStateFlow()
+
+    private val _tourSalesMap = MutableStateFlow<List<Map<String, String>>>(emptyList())
+    val tourSalesMap = _tourSalesMap.asStateFlow()
+
+    private val _staycationsSalesMapForHTML = MutableStateFlow<List<Map<String, String>>>(emptyList())
+    val staycationsSalesMapForHTML = _staycationsSalesMapForHTML.asStateFlow()
+
+    private val _tourSalesMapForHTML = MutableStateFlow<List<Map<String, String>>>(emptyList())
+    val tourSalesMapForHTML = _tourSalesMapForHTML.asStateFlow()
+
+    private val _selectedSalesSort = MutableStateFlow("Highest Booking Count")
+    val selectedSalesSort = _selectedSalesSort.asStateFlow()
+
+    private val _selectedMonthSales = MutableStateFlow("All")
+    val selectedMonthSales = _selectedMonthSales.asStateFlow()
+
+    private val _selectedYearSales = MutableStateFlow("All")
+    val selectedYearSales = _selectedYearSales.asStateFlow()
+
+    private val _staycationTotalCollectedCommission = MutableStateFlow<Double>(0.0)
+    val staycationTotalCollectedCommission = _staycationTotalCollectedCommission.asStateFlow()
+
+    private val _staycationTotalPendingCommission = MutableStateFlow<Double>(0.0)
+    val staycationTotalPendingCommission = _staycationTotalPendingCommission.asStateFlow()
+
+    private val _staycationTotalGrossSale = MutableStateFlow<Double>(0.0)
+    val staycationTotalGrossSale = _staycationTotalGrossSale.asStateFlow()
+
+    private val _tourTotalCollectedCommission = MutableStateFlow<Double>(0.0)
+    val tourTotalCollectedCommission = _tourTotalCollectedCommission.asStateFlow()
+
+    private val _tourTotalPendingCommission = MutableStateFlow<Double>(0.0)
+    val tourTotalPendingCommission = _tourTotalPendingCommission.asStateFlow()
+
+    private val _tourTotalGrossSale = MutableStateFlow<Double>(0.0)
+    val tourTotalGrossSale = _tourTotalGrossSale.asStateFlow()
+
+
+    private val _isFetchingStaycationsSales = MutableStateFlow(false)
+    val isFetchingStaycationsSales = _isFetchingStaycationsSales.asStateFlow()
+
+    private val _isFetchingToursSales= MutableStateFlow(false)
+    val isFetchingToursSales = _isFetchingToursSales.asStateFlow()
+
+    private val _isStaycationSalesFetched = MutableStateFlow(false)
+    val isStaycationSalesFetched = _isStaycationSalesFetched.asStateFlow()
+
+    private val _isTourSalesFetched = MutableStateFlow(false)
+    val isTourSalesFetched = _isTourSalesFetched.asStateFlow()
+
+
+
+    // SALES
+
+    fun setSelectedMonthSales(filter: String) {
+        _selectedMonthSales.value = filter
+
+        val (startDate, endDate) = parseDateRange(getDateRangeSales())
+
+        val tempTourSales = _toursSales.value.filter {
+            it.bookingDate in startDate..endDate
+        }
+
+        val tempStaycationSales = _staycationsSales.value.filter {
+            it.bookingDate in startDate..endDate
+        }
+
+        groupSalesByTourId(tempTourSales, false)
+        groupSalesByStaycationId(tempStaycationSales, false)
+
+    }
+
+    fun setSelectedYearSales(filter: String) {
+        _selectedYearSales.value = filter
+
+        val (startDate, endDate) = parseDateRange(getDateRangeSales())
+
+        val tempTourSales = _toursSales.value.filter {
+            it.bookingDate in startDate..endDate
+        }
+
+        val tempStaycationSales = _staycationsSales.value.filter {
+            it.bookingDate in startDate..endDate
+        }
+//
+//        groupSalesById(tempTourSales, "Tour")
+//        groupSalesById(tempStaycationSales, "Staycation")
+        groupSalesByTourId(tempTourSales, false)
+        groupSalesByStaycationId(tempStaycationSales, false)
+
+    }
+
+    private fun getDateRangeSales(): String {
+
+        val monthStartName = if (_selectedMonthSales.value == "All") "January" else _selectedMonthSales.value
+        val monthEndName = if (_selectedMonthSales.value == "All") "December" else _selectedMonthSales.value
+
+        val monthStart = Month.values().find { it.getDisplayName(TextStyle.FULL, Locale.getDefault()).equals(monthStartName, ignoreCase = true) }
+        val monthEnd = Month.values().find { it.getDisplayName(TextStyle.FULL, Locale.getDefault()).equals(monthEndName, ignoreCase = true) }
+
+        val yearStart = if (_selectedYearSales.value == "All") 2023 else _selectedYearSales.value.toInt()
+        val yearEnd = if (_selectedYearSales.value == "All") getCurrentYear() else _selectedYearSales.value.toInt()
+
+        return if (monthStart != null) {
+            val startDate = LocalDate.of(yearStart, monthStart, 1)
+            val endDate =
+                if (_selectedYearSales.value == "All") LocalDate.of(yearEnd, getCurrentMonth(), getCurrentDay())
+                else if (_selectedMonthSales.value == "All") LocalDate.of(yearEnd, monthEnd, 31)
+                else startDate.plusMonths(1).minusDays(1)
+
+            val formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy")
+            val startDateString = startDate.format(formatter)
+            val endDateString = endDate.format(formatter)
+
+            Log.d("Start-End", "$startDateString-$endDateString")
+
+            "$startDateString-$endDateString"
+        } else {
+            ""
+        }
+    }
+
+    fun setSalesSortBy(sort: String) {
+
+        val currencySymbol = "₱"
+
+        val salesSortOptions = listOf(
+            "Highest Booking Count",
+            "Lowest Booking Count",
+            "Highest Gross Booking Sales",
+            "Lowest Gross Booking Sales",
+            "Highest Collected Commission",
+            "Lowest Collected Commission",
+            "Highest Pending Commission",
+            "Lowest Pending Commission",
+        )
+
+        val salesMapKey = listOf(
+            "id",
+            "title",
+            "hostName",
+            "numberOfBookings" ,
+            "grossBookingSales",
+            "collectedCommission",
+            "pendingCommission",
+        )
+
+
+        _selectedSalesSort.value = sort
+
+        when (_selectedSalesSort.value) {
+            "Highest Booking Count" -> {
+                _staycationsSalesMap.value =
+                    _staycationsSalesMap.value.sortedByDescending { it["numberOfBookings"].toString().toInt() }
+                _tourSalesMap.value =
+                    _tourSalesMap.value.sortedByDescending { it["numberOfBookings"].toString().toInt() }
+
+                _staycationsSalesMapForHTML.value =
+                    _staycationsSalesMapForHTML.value.sortedByDescending { it["numberOfBookings"].toString().toInt() }
+                _tourSalesMapForHTML.value =
+                    _tourSalesMapForHTML.value.sortedByDescending { it["numberOfBookings"].toString().toInt() }
+            }
+            "Lowest Booking Count" -> {
+                _staycationsSalesMap.value =
+                    _staycationsSalesMap.value.sortedBy { it["numberOfBookings"].toString().toInt() }
+                _tourSalesMap.value =
+                    _tourSalesMap.value.sortedBy { it["numberOfBookings"].toString().toInt() }
+
+                _staycationsSalesMapForHTML.value =
+                    _staycationsSalesMapForHTML.value.sortedBy { it["numberOfBookings"].toString().toInt() }
+                _tourSalesMapForHTML.value =
+                    _tourSalesMapForHTML.value.sortedBy { it["numberOfBookings"].toString().toInt() }
+            }
+            "Highest Gross Booking Sales" -> {
+                _staycationsSalesMap.value =
+                    _staycationsSalesMap.value.sortedByDescending {
+                        it["grossBookingSales"]!!.substring(currencySymbol.length).trim().toDouble()
+                    }
+                _tourSalesMap.value =
+                    _tourSalesMap.value.sortedByDescending {
+                        it["grossBookingSales"]!!.substring(currencySymbol.length).trim().toDouble()
+                    }
+
+                _staycationsSalesMapForHTML.value =
+                    _staycationsSalesMapForHTML.value.sortedByDescending {
+                        it["grossBookingSales"]!!.substring(currencySymbol.length).trim().toDouble()
+                    }
+                _tourSalesMapForHTML.value =
+                    _tourSalesMapForHTML.value.sortedByDescending {
+                        it["grossBookingSales"]!!.substring(currencySymbol.length).trim().toDouble()
+                    }
+            }
+            "Lowest Gross Booking Sales" -> {
+                _staycationsSalesMap.value =
+                    _staycationsSalesMap.value.sortedBy {
+                        it["grossBookingSales"]!!.substring(currencySymbol.length).trim().toDouble()
+                    }
+                _tourSalesMap.value =
+                    _tourSalesMap.value.sortedBy {
+                        it["grossBookingSales"]!!.substring(currencySymbol.length).trim().toDouble()
+                    }
+
+                _staycationsSalesMapForHTML.value =
+                    _staycationsSalesMapForHTML.value.sortedBy {
+                        it["grossBookingSales"]!!.substring(currencySymbol.length).trim().toDouble()
+                    }
+                _tourSalesMapForHTML.value =
+                    _tourSalesMapForHTML.value.sortedBy {
+                        it["grossBookingSales"]!!.substring(currencySymbol.length).trim().toDouble()
+                    }
+            }
+            "Highest Collected Commission" -> {
+                _staycationsSalesMap.value =
+                    _staycationsSalesMap.value.sortedByDescending {
+                        it["collectedCommission"]!!.substring(currencySymbol.length).trim().toDouble()
+                    }
+                _tourSalesMap.value =
+                    _tourSalesMap.value.sortedByDescending {
+                        it["collectedCommission"]!!.substring(currencySymbol.length).trim().toDouble()
+                    }
+
+                _staycationsSalesMapForHTML.value =
+                    _staycationsSalesMapForHTML.value.sortedByDescending {
+                        it["collectedCommission"]!!.substring(currencySymbol.length).trim().toDouble()
+                    }
+                _tourSalesMapForHTML.value =
+                    _tourSalesMapForHTML.value.sortedByDescending {
+                        it["collectedCommission"]!!.substring(currencySymbol.length).trim().toDouble()
+                    }
+            }
+            "Lowest Collected Commission" -> {
+                _staycationsSalesMap.value =
+                    _staycationsSalesMap.value.sortedBy {
+                        it["collectedCommission"]!!.substring(currencySymbol.length).trim().toDouble()
+                    }
+                _tourSalesMap.value =
+                    _tourSalesMap.value.sortedBy {
+                        it["collectedCommission"]!!.substring(currencySymbol.length).trim().toDouble()
+                    }
+
+                _staycationsSalesMapForHTML.value =
+                    _staycationsSalesMapForHTML.value.sortedBy {
+                        it["collectedCommission"]!!.substring(currencySymbol.length).trim().toDouble()
+                    }
+                _tourSalesMapForHTML.value =
+                    _tourSalesMapForHTML.value.sortedBy {
+                        it["collectedCommission"]!!.substring(currencySymbol.length).trim().toDouble()
+                    }
+            }
+            "Highest Pending Commission" -> {
+                _staycationsSalesMap.value =
+                    _staycationsSalesMap.value.sortedByDescending {
+                        it["pendingCommission"]!!.substring(currencySymbol.length).trim().toDouble()
+                    }
+                _tourSalesMap.value =
+                    _tourSalesMap.value.sortedByDescending {
+                        it["pendingCommission"]!!.substring(currencySymbol.length).trim().toDouble()
+                    }
+
+                _staycationsSalesMapForHTML.value =
+                    _staycationsSalesMapForHTML.value.sortedByDescending {
+                        it["pendingCommission"]!!.substring(currencySymbol.length).trim().toDouble()
+                    }
+                _tourSalesMapForHTML.value =
+                    _tourSalesMapForHTML.value.sortedByDescending {
+                        it["pendingCommission"]!!.substring(currencySymbol.length).trim().toDouble()
+                    }
+            }
+            "Lowest Pending Commission" -> {
+                _staycationsSalesMap.value =
+                    _staycationsSalesMap.value.sortedBy {
+                        it["pendingCommission"]!!.substring(currencySymbol.length).trim().toDouble()
+                    }
+                _tourSalesMap.value =
+                    _tourSalesMap.value.sortedBy {
+                        it["pendingCommission"]!!.substring(currencySymbol.length).trim().toDouble()
+                    }
+
+                _staycationsSalesMapForHTML.value =
+                    _staycationsSalesMapForHTML.value.sortedBy {
+                        it["pendingCommission"]!!.substring(currencySymbol.length).trim().toDouble()
+                    }
+                _tourSalesMapForHTML.value =
+                    _tourSalesMapForHTML.value.sortedBy {
+                        it["pendingCommission"]!!.substring(currencySymbol.length).trim().toDouble()
+                    }
+            }
+        }
+
+    }
+
+    suspend fun fetchTourBookings(): List<TourBooking> {
+
+        _isFetchingToursSales.value = true
+
+        val tourBookings = mutableListOf<TourBooking>()
+
+        try {
+            val query =
+                db.collection("tour_booking")
+                    .orderBy("bookingDate", Query.Direction.ASCENDING)
+
+            val querySnapshot = query.get().await()
+
+            for (document in querySnapshot.documents) {
+                val bookingDate = document.getTimestamp("bookingDate")?.toDate() ?: Date()
+                val bookingStatus = document.getString("bookingStatus") ?: ""
+                val commission = document.getDouble("commission") ?: 0.0
+                val endTime = document.getString("endTime") ?: ""
+                val noOfGuests = document.getLong("noOfGuests")?.toInt() ?: 0
+                val startTime = document.getString("startTime") ?: ""
+                val totalAmount = document.getDouble("totalAmount") ?: 0.0
+                //    val tourAvailabilityId = document.getString("tourAvailabilityId") ?: ""
+                val tourDate = document.getString("tourDate") ?: ""
+                val tourId = document.getString("tourId") ?: ""
+                val touristId = document.getString("touristId") ?: ""
+
+                val tour = fetchTourDocumentById(tourId)
+                val host = fetchTouristData(tour.hostId.substring(5))
+                val tourist = fetchTouristData(touristId)
+
+                val tourBooking = TourBooking(
+                    host,
+                    tourist,
+                    tour,
+                    noOfGuests,
+                    startTime,
+                    endTime,
+                    tourDate,
+                    totalAmount,
+                    commission,
+                    bookingStatus,
+                    bookingDate
+                )
+
+
+                tourBookings.add(tourBooking)
+
+                Log.d("Tour Booking", tourBooking.toString())
+            }
+
+       //     _tourBookingReports.value = tourBookings
+            _toursSales.value = tourBookings
+            groupSalesByTourId(tourBookings, false)
+
+            //  Log.d("Tour Bookings", _tourBookingReports.value.toString())
+
+        } catch (e: Exception) {
+            Log.e("Tour", "Error fetching tour bookings: ${e.message}")
+        } finally {
+            _isFetchingToursSales.value = false
+           // _isTourBookingsFetched.value = true
+            _isTourSalesFetched.value = true
+        }
+
+        return tourBookings
+    }
+
+    suspend fun fetchStaycationBookings(): List<StaycationBooking> {
+
+        _isFetchingStaycationsSales.value = true
+
+        val staycationBookings = mutableListOf<StaycationBooking>()
+
+        try {
+
+            val query = db.collection("staycation_booking")
+                .orderBy("bookingDate", Query.Direction.ASCENDING)
+
+
+            val querySnapshot = query.get().await()
+
+
+            for (document in querySnapshot.documents) {
+                val additionalFee = document.getDouble("additionalFee") ?: 0.0
+                val bookingDate = document.getTimestamp("bookingDate")?.toDate() ?: Date()
+                val bookingStatus = document.getString("bookingStatus") ?: ""
+                val checkInDate = document.getTimestamp("checkInDate")?.toDate() ?: Date()
+                val checkOutDate = document.getTimestamp("checkOutDate")?.toDate() ?: Date()
+                val commission = document.getDouble("commission") ?: 0.0
+                val noOfGuests = document.getLong("noOfGuests")?.toInt() ?: 0
+                val noOfInfants = document.getLong("noOfInfants")?.toInt() ?: 0
+                val noOfPets = document.getLong("noOfPets")?.toInt() ?: 0
+                val staycationId = document.getString("staycationId") ?: ""
+                val totalAmount = document.getDouble("totalAmount") ?: 0.0
+                val touristId = document.getString("touristId") ?: ""
+
+
+
+                val staycation = fetchStaycationDocumentById(staycationId)
+
+                //   Log.d("Host Id", staycation.hostId)
+
+                val host = fetchTouristData(staycation.hostId.substring(5))
+                val tourist = fetchTouristData(touristId)
+
+                val staycationBooking = StaycationBooking(
+                    host,
+                    tourist,
+                    staycation,
+                    checkInDate,
+                    checkOutDate,
+                    noOfGuests,
+                    noOfInfants,
+                    noOfPets,
+                    additionalFee,
+                    totalAmount,
+                    commission,
+                    bookingStatus,
+                    bookingDate
+                )
+                staycationBookings.add(staycationBooking)
+
+                Log.d("Staycation Booking", staycationBooking.toString())
+            }
+
+            _staycationsSales.value = staycationBookings
+            groupSalesByStaycationId(staycationBookings, false)
+
+        } catch (e: Exception) {
+            Log.e("StaycationRepository", "Error fetching staycation bookings: ${e.message}")
+        } finally {
+            _isFetchingStaycationsSales.value = false
+            _isStaycationSalesFetched.value = true
+
+
+        }
+
+        return staycationBookings
+    }
+
+    private fun groupSalesByStaycationId(staycationSales: List<StaycationBooking>, forReportGeneration: Boolean) {
+
+        val currencySymbol = "₱"
+
+     //   val groupedByStaycationId = _staycationsSales.value.groupBy { it.staycation.staycationId }
+
+        val groupedByStaycationId = staycationSales.groupBy { it.staycation.staycationId }
+
+        val listOfMap = groupedByStaycationId.map { (staycationId, bookings) ->
+            val staycation = bookings.first().staycation
+            val host = bookings.first().host
+
+            val numberOfBookings = bookings.size
+            val grossBookingSales = bookings.sumOf { it.totalAmount }
+            val totalCollectedCommission = bookings.filter { it.bookingStatus == "Completed" }.sumOf { it.commission }
+            val totalPendingCommission = bookings.filter { it.bookingStatus != "Completed" }.sumOf { it.commission }
+
+            mapOf(
+                "id" to staycationId,
+                "title" to staycation.staycationTitle,
+                "hostName" to "${host.firstName} ${host.lastName}" ,
+                "numberOfBookings" to numberOfBookings.toString(),
+                "grossBookingSales" to "$currencySymbol %.2f".format(grossBookingSales),
+                "collectedCommission" to "$currencySymbol %.2f".format(totalCollectedCommission),
+                "pendingCommission" to "$currencySymbol %.2f".format(totalPendingCommission)
+            )
+        }
+
+        listOfMap.forEach { map ->
+            Log.d("Staycation Booking Map", map.toString())
+        }
+
+        //  val sortedListOfMap = listOfMap.sortedByDescending { it["totalBookings"].toString().toInt() }
+        val totalSumOfCollectedCommission = listOfMap.sumOf {
+            it["collectedCommission"]!!.substring(currencySymbol.length).trim().toDouble()
+        }
+        Log.d("Total Collected Commission", "Total Sum of Collected Commission: $totalSumOfCollectedCommission")
+
+        val totalSumOfPendingCommission = listOfMap.sumOf {
+            it["pendingCommission"]!!.substring(currencySymbol.length).trim().toDouble()
+        }
+        Log.d("Total Pending Commission", "Total Sum of Pending Commission: $totalSumOfPendingCommission")
+
+        val totalSumOfGrossSale = listOfMap.sumOf {
+            it["grossBookingSales"]!!.substring(currencySymbol.length).trim().toDouble()
+        }
+
+        if (forReportGeneration) {
+            _staycationsSalesMapForHTML.value = listOfMap
+            _staycationTotalCollectedCommission.value = totalSumOfCollectedCommission
+            _staycationTotalPendingCommission.value = totalSumOfPendingCommission
+            _staycationTotalGrossSale.value = totalSumOfGrossSale
+        } else {
+            _staycationsSalesMap.value = listOfMap
+        }
+
+
+        setSalesSortBy(_selectedSalesSort.value)
+
+    }
+
+    private fun groupSalesByTourId(toursSales: List<TourBooking>, forReportGeneration: Boolean) {
+
+        val currencySymbol = "₱"
+
+        val groupedByTourId = toursSales.groupBy { it.tour.tourId }
+
+
+        val listOfMap = groupedByTourId.map { (tourId, bookings) ->
+            val tour = bookings.first().tour
+            val host = bookings.first().host
+
+            val numberOfBookings = bookings.size
+            val grossBookingSales = bookings.sumOf { it.totalAmount }
+            val totalCollectedCommission = bookings.filter { it.bookingStatus == "Completed" }.sumOf { it.commission }
+            val totalPendingCommission = bookings.filter { it.bookingStatus != "Completed" }.sumOf { it.commission }
+
+            mapOf(
+                "id" to tourId,
+                "title" to tour.tourTitle,
+                "hostName" to "${host.firstName} ${host.lastName}" ,
+                "numberOfBookings" to numberOfBookings.toString(),
+                "grossBookingSales" to "$currencySymbol %.2f".format(grossBookingSales),
+                "collectedCommission" to "$currencySymbol %.2f".format(totalCollectedCommission),
+                "pendingCommission" to "$currencySymbol %.2f".format(totalPendingCommission)
+            )
+        }
+
+        listOfMap.forEach { map ->
+            Log.d("Staycation Booking Map", map.toString())
+        }
+
+        val totalSumOfCollectedCommission = listOfMap.sumOf {
+            it["collectedCommission"]!!.substring(currencySymbol.length).trim().toDouble()
+        }
+
+        val totalSumOfPendingCommission = listOfMap.sumOf {
+            it["pendingCommission"]!!.substring(currencySymbol.length).trim().toDouble()
+        }
+
+        val totalSumOfGrossSale = listOfMap.sumOf {
+            it["grossBookingSales"]!!.substring(currencySymbol.length).trim().toDouble()
+        }
+
+        if (forReportGeneration) {
+            _tourSalesMapForHTML.value = listOfMap
+            _tourTotalCollectedCommission.value = totalSumOfCollectedCommission
+            _tourTotalPendingCommission.value = totalSumOfPendingCommission
+            _tourTotalGrossSale.value = totalSumOfGrossSale
+        } else {
+            _tourSalesMap.value = listOfMap
+        }
+
+
+
+
+        setSalesSortBy(_selectedSalesSort.value)
+
+    }
+
+
+
     fun resetReportGenerated() {
         _isReportGenerated.value = false
     }
@@ -117,10 +682,28 @@ class AdminTables : ViewModel() {
     fun setSelectedMonth(filter: String) {
         _selectedMonth.value = filter
 
+        _dateRange.value = when(_selectedPeriod.value) {
+            "Monthly" -> getDateRangeForMonth()
+            "Bi-yearly" -> getDateRangeForMonths()
+            "Yearly" -> getDateRangeForYear()
+            else -> "Unregistered Report Type"
+        }
+
+        Log.d("Date Range", _dateRange.value)
+
     }
 
     fun setSelectedYear(filter: String) {
         _selectedYear.value = filter.toInt()
+
+        _dateRange.value = when(_selectedPeriod.value) {
+            "Monthly" -> getDateRangeForMonth()
+            "Bi-yearly" -> getDateRangeForMonths()
+            "Yearly" -> getDateRangeForYear()
+            else -> "Unregistered Report Type"
+        }
+
+        Log.d("Date Range", _dateRange.value)
 
     }
 
@@ -133,6 +716,15 @@ class AdminTables : ViewModel() {
             _selectedStartMonth.value = "July"
             _selectedEndMonth.value = "December"
         }
+
+        _dateRange.value = when(_selectedPeriod.value) {
+            "Monthly" -> getDateRangeForMonth()
+            "Bi-yearly" -> getDateRangeForMonths()
+            "Yearly" -> getDateRangeForYear()
+            else -> "Unregistered Report Type"
+        }
+
+        Log.d("Date Range", _dateRange.value)
     }
 
     private fun getDateRangeForMonth(): String {
@@ -180,8 +772,10 @@ class AdminTables : ViewModel() {
         return "$startDateString-$endDateString"
     }
 
-    fun generateReport() {
+    fun generatePerformanceReport() {
      //   _selectedYearPerformance.value = filter
+
+        Log.d("Date Range", _dateRange.value)
 
         _isGeneratingReport.value = true
 
@@ -195,8 +789,34 @@ class AdminTables : ViewModel() {
             it.bookingDate in startDate..endDate
         }
 
-        groupPerformanceById(tempTourPerformance, "Tour")
-        groupPerformanceById(tempStaycationPerformance, "Staycation")
+        groupPerformanceById(tempTourPerformance, "Tour", true)
+        groupPerformanceById(tempStaycationPerformance, "Staycation", true)
+
+        _isGeneratingReport.value = false
+        _isReportGenerated.value = true
+
+    }
+
+    fun generateSalesReport() {
+        //   _selectedYearPerformance.value = filter
+
+        _isGeneratingReport.value = true
+
+        val (startDate, endDate) = parseDateRange(_dateRange.value)
+
+        val tempTourSales = _toursSales.value.filter {
+            it.bookingDate in startDate..endDate
+        }
+
+        val tempStaycationSales = _staycationsSales.value.filter {
+            it.bookingDate in startDate..endDate
+        }
+
+        groupSalesByTourId(tempTourSales, true)
+        groupSalesByStaycationId(tempStaycationSales, true)
+
+//        groupPerformanceById(tempTourPerformance, "Tour")
+//        groupPerformanceById(tempStaycationPerformance, "Staycation")
 
         _isGeneratingReport.value = false
         _isReportGenerated.value = true
@@ -218,8 +838,8 @@ class AdminTables : ViewModel() {
             it.bookingDate in startDate..endDate
         }
 
-        groupPerformanceById(tempTourPerformance, "Tour")
-        groupPerformanceById(tempStaycationPerformance, "Staycation")
+        groupPerformanceById(tempTourPerformance, "Tour", false)
+        groupPerformanceById(tempStaycationPerformance, "Staycation", false)
 
     }
 
@@ -237,8 +857,8 @@ class AdminTables : ViewModel() {
             it.bookingDate in startDate..endDate
         }
 
-        groupPerformanceById(tempTourPerformance, "Tour")
-        groupPerformanceById(tempStaycationPerformance, "Staycation")
+        groupPerformanceById(tempTourPerformance, "Tour", false)
+        groupPerformanceById(tempStaycationPerformance, "Staycation", false)
 
     }
 
@@ -497,7 +1117,7 @@ class AdminTables : ViewModel() {
             }
 
             _staycationsPerformance.value = servicePerformanceList
-            groupPerformanceById(servicePerformanceList, "Staycation")
+            groupPerformanceById(servicePerformanceList, "Staycation", false)
             Log.d("Staycation Performance", servicePerformanceList.toString())
             //    generateMapFromTourBookingReports()
 
@@ -552,7 +1172,7 @@ class AdminTables : ViewModel() {
             }
 
             _toursPerformance.value = servicePerformanceList
-            groupPerformanceById(servicePerformanceList, "Tour")
+            groupPerformanceById(servicePerformanceList, "Tour", false)
             //    generateMapFromTourBookingReports()
             Log.d("Tour Performance", servicePerformanceList.toString())
 
@@ -566,7 +1186,7 @@ class AdminTables : ViewModel() {
         return servicePerformanceList
     }
 
-    private fun groupPerformanceById(servicePerformanceList: List<ServicePerformance>, serviceType: String) {
+    private fun groupPerformanceById(servicePerformanceList: List<ServicePerformance>, serviceType: String, forReportGeneration: Boolean) {
 
         val groupedById = servicePerformanceList.groupBy { it.id }
 
@@ -606,11 +1226,16 @@ class AdminTables : ViewModel() {
             Log.d("$serviceType Performance Map", map.toString())
         }
 
-        if (serviceType == "Staycation") {
-            _staycationPerformanceMap.value = listOfMap
-            _staycationPerformanceMapForHTML.value = listOfMap
+        if (!forReportGeneration) {
+            if (serviceType == "Staycation") {
+                _staycationPerformanceMap.value = listOfMap
+                //    _staycationPerformanceMapForHTML.value = listOfMap
+            } else {
+                _tourPerformanceMap.value = listOfMap
+                //       _tourPerformanceMapForHTML.value = listOfMap
+            }
         } else {
-            _tourPerformanceMap.value = listOfMap
+            _staycationPerformanceMapForHTML.value = listOfMap
             _tourPerformanceMapForHTML.value = listOfMap
         }
 
